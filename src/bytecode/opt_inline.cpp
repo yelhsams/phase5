@@ -66,23 +66,43 @@ static void inline_one(Function* f)
     for (size_t i = 0; i < code.size(); i++) {
         Instruction inst = code[i];
 
-        // Look for CALL m
+        // Look for CALL 0 (zero-argument calls only)
+        // For calls with arguments, the callee position is complex to determine
+        // because we'd need to account for the stack effects of each argument.
+        // For safety, we only inline direct calls with no arguments where
+        // we can verify the pattern: load_func X, alloc_closure Y, call 0
         if (inst.operation == Operation::Call) {
             int arg_count = inst.operand0.value();
 
-            // LOAD_FUNC must appear arg_count+1 instructions before CALL
-            if (i < (size_t)arg_count + 1) {
+            // Only consider zero-argument calls for inlining
+            if (arg_count != 0) {
                 new_code.push_back(inst);
                 continue;
             }
 
-            Instruction& load_func_inst = code[i - (arg_count + 1)];
-            if (load_func_inst.operation != Operation::LoadFunc) {
+            // For call 0, the pattern must be:
+            //   load_func X
+            //   alloc_closure Y
+            //   call 0
+            if (i < 2) {
+                new_code.push_back(inst);
+                continue;
+            }
+
+            Instruction& alloc_closure_inst = code[i - 1];
+            Instruction& load_func_inst = code[i - 2];
+
+            if (alloc_closure_inst.operation != Operation::AllocClosure ||
+                load_func_inst.operation != Operation::LoadFunc) {
                 new_code.push_back(inst);
                 continue;
             }
 
             int func_index = load_func_inst.operand0.value();
+            if (func_index < 0 || (size_t)func_index >= f->functions_.size()) {
+                new_code.push_back(inst);
+                continue;
+            }
             Function* callee = f->functions_[func_index];
 
             if (!is_inlinable(callee)) {
@@ -92,13 +112,13 @@ static void inline_one(Function* f)
 
             // --- INLINING STARTS HERE ---
 
-            // 1. Copy everything except LOAD_FUNC + args
-            size_t start_of_call_seq = i - (arg_count + 1);
+            // 1. Copy everything except LOAD_FUNC, ALLOC_CLOSURE
+            size_t start_of_call_seq = i - 2;
 
             for (size_t k = new_code.size(); k < start_of_call_seq; k++)
                 new_code.push_back(code[k]);
 
-            // 2. Extend caller’s locals
+            // 2. Extend caller's locals
             size_t local_offset = f->local_vars_.size();
             f->local_vars_.insert(
                 f->local_vars_.end(),
@@ -110,7 +130,7 @@ static void inline_one(Function* f)
             auto cloned = clone_and_remap(callee, local_offset);
             new_code.insert(new_code.end(), cloned.begin(), cloned.end());
 
-            // 4. Skip over LOAD_FUNC, args, and CALL
+            // 4. Skip over LOAD_FUNC, ALLOC_CLOSURE, and CALL
             // so we do NOT re-copy them
             continue;
         }
