@@ -19,16 +19,12 @@ namespace mitscript {
         int current_line;
         int current_col;
 
-        bool is_eof() const;
-        char peek(size_t lookahead = 0) const;
-        std::optional<Token> lex_chunk();
-        void skip_ws_and_comments();
-        std::optional<mitscript::Token> lex_string(int start_line, int start_col);
-        std::optional<mitscript::Token> lex_number(int start_line, int start_col);
-        std::optional<mitscript::Token> lex_identifier_or_keyword(int start_line, int start_col);
+        void skip_ws_and_comments(const char *&p, const char *end, int &line, int &col);
+        mitscript::Token lex_string(const char *&p, const char *end, int &line, int &col, int start_line, int start_col);
+        mitscript::Token lex_number(const char *&p, const char *end, int &line, int &col, int start_line, int start_col);
+        mitscript::Token lex_identifier_or_keyword(const char *&p, const char *end, int &line, int &col, int start_line, int start_col);
         mitscript::Token make_error(const std::string &error_msg, int start_line, int start_col, int end_line, int end_col);
-        void advance();
-
+    
 
     };
 
