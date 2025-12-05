@@ -155,7 +155,10 @@ struct BytecodeConverter {
     }
 
     case K::STR: {
-      auto up = std::make_unique<bytecode::Constant::String>(std::move(key.s));
+      // NOTE: Do NOT use std::move(key.s) here! The key must remain intact
+      // so it can be correctly stored in cmap. Moving key.s would leave it
+      // empty, causing all string constants to hash-collide with "".
+      auto up = std::make_unique<bytecode::Constant::String>(key.s);
       raw = up.get();
       constant_arena.push_back(std::move(up));
       break;

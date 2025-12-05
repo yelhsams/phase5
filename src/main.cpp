@@ -3,6 +3,7 @@
 #include "bytecode/opt_constprop.hpp"
 #include "bytecode/opt_deadcode.hpp"
 #include "bytecode/opt_inline.hpp"
+#include "bytecode/opt_peephole.hpp"
 #include "bytecode/parser.hpp"
 #include "bytecode/prettyprinter.hpp"
 #include "mitscript-compiler/bytecode-converter.hpp"
@@ -189,6 +190,11 @@ int main(int argc, char **argv) {
         bytecode::opt_deadcode::eliminate_dead_code(bytecode);
       }
 
+      // Optional optimization: peephole (constant folding)
+      if (has_opt(command, "peephole") || has_opt(command, "all")) {
+        bytecode::opt_peephole::peephole_optimize(bytecode);
+      }
+
       // bytecode::opt_inline::inline_functions(bytecode);
       vm::VM vm(command.mem);
       vm.run(bytecode);
@@ -244,8 +250,12 @@ int main(int argc, char **argv) {
         bytecode::opt_deadcode::eliminate_dead_code(bytecode_func);
       }
 
-      // Optimization: inlining (disabled for now; current pass is not
-      // semantics-safe)
+      // Optional optimization: peephole (constant folding)
+      if (has_opt(command, "peephole") || has_opt(command, "all")) {
+        bytecode::opt_peephole::peephole_optimize(bytecode_func);
+      }
+
+      // Optimization: inlining
       bytecode::opt_inline::inline_functions(bytecode_func);
 
       // Create VM and execute

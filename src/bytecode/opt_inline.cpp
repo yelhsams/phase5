@@ -63,27 +63,38 @@ static std::vector<Instruction> clone_and_remap(Function *callee,
 static void inline_one(Function *f) {
   auto &code = f->instructions;
   std::vector<Instruction> new_code;
+  new_code.reserve(code.size());
 
   for (size_t i = 0; i < code.size(); i++) {
-    Instruction inst = code[i];
+    const Instruction &inst = code[i];
 
     // Look for CALL m
     if (inst.operation == Operation::Call) {
       int arg_count = inst.operand0.value();
 
-      // LOAD_FUNC must appear arg_count+1 instructions before CALL
+      // Check if there's a LoadFunc instruction at the expected position
+      // The call sequence is: LoadFunc, [arg instructions...], Call
+      // So LoadFunc should be at position (i - arg_count - 1) in original code
+      // But we've been pushing instructions to new_code, so we need to check
+      // the original code array
       if (i < (size_t)arg_count + 1) {
         new_code.push_back(inst);
         continue;
       }
 
-      Instruction &load_func_inst = code[i - (arg_count + 1)];
+      size_t load_func_pos = i - arg_count - 1;
+      const Instruction &load_func_inst = code[load_func_pos];
       if (load_func_inst.operation != Operation::LoadFunc) {
         new_code.push_back(inst);
         continue;
       }
 
       int func_index = load_func_inst.operand0.value();
+      if (func_index < 0 || func_index >= (int)f->functions_.size()) {
+        new_code.push_back(inst);
+        continue;
+      }
+
       Function *callee = f->functions_[func_index];
 
       if (!is_inlinable(callee)) {
@@ -91,25 +102,53 @@ static void inline_one(Function *f) {
         continue;
       }
 
+      // Verify parameter count matches argument count
+      if ((int)callee->parameter_count_ != arg_count) {
+        new_code.push_back(inst);
+        continue;
+      }
+
       // --- INLINING STARTS HERE ---
 
-      // 1. Copy everything except LOAD_FUNC + args
-      size_t start_of_call_seq = i - (arg_count + 1);
+      // At this point, new_code has already accumulated:
+      // - Instructions before LoadFunc
+      // - LoadFunc instruction
+      // - arg_count argument-producing instructions
+      //
+      // We need to:
+      // 1. Remove the LoadFunc instruction (it's not needed for inlining)
+      // 2. Keep the argument instructions (they produce values on stack)
+      // 3. Add StoreLocal instructions to move args from stack to local slots
+      // 4. Insert the cloned callee body
 
-      for (size_t k = new_code.size(); k < start_of_call_seq; k++)
-        new_code.push_back(code[k]);
+      // Calculate where the call sequence starts in new_code
+      // new_code currently has load_func_pos + 1 + arg_count instructions
+      // (everything through the arg instructions, not including Call)
+      size_t new_code_call_seq_start = new_code.size() - arg_count - 1;
 
-      // 2. Extend caller’s locals
+      // Remove LoadFunc instruction (it's at new_code_call_seq_start)
+      // The argument instructions after it remain in place
+      new_code.erase(new_code.begin() + new_code_call_seq_start);
+
+      // Extend caller's locals with callee's locals
       size_t local_offset = f->local_vars_.size();
       f->local_vars_.insert(f->local_vars_.end(), callee->local_vars_.begin(),
                             callee->local_vars_.end());
 
-      // 3. Insert cloned & remapped callee body
+      // Store arguments from stack to the remapped parameter locals
+      // Arguments are on stack in order [arg0, arg1, ..., argN-1] (arg0 at bottom)
+      // We need to store them in reverse order (pop argN-1 first)
+      for (int j = arg_count - 1; j >= 0; --j) {
+        new_code.push_back(
+            Instruction(Operation::StoreLocal, (int32_t)(local_offset + j)));
+      }
+
+      // Insert cloned & remapped callee body (without final Return)
       auto cloned = clone_and_remap(callee, local_offset);
       new_code.insert(new_code.end(), cloned.begin(), cloned.end());
 
-      // 4. Skip over LOAD_FUNC, args, and CALL
-      // so we do NOT re-copy them
+      // The inlined body's last instruction pushed the return value to stack,
+      // which is what we want (Call would have done the same)
       continue;
     }
 
