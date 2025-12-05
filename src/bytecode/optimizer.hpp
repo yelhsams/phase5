@@ -56,9 +56,11 @@ public:
     // Run all optimization passes
     void optimize() {
         // Multiple passes for better optimization
-        for (int pass = 0; pass < 3; ++pass) {
+        for (int pass = 0; pass < 4; ++pass) {
             bool changed = false;
             changed |= eliminate_unreachable_code();
+            changed |= algebraic_simplify();
+            changed |= strength_reduce();
             changed |= fold_constants();
             changed |= peephole_optimize();
             changed |= eliminate_dead_stores();
@@ -150,7 +152,252 @@ private:
     }
 
     //-------------------------------------------------------------------------
-    // Pass 2: Constant Folding
+    // Pass 2: Algebraic Simplifications
+    // Optimizes patterns like x+0, x*1, x*0, x-0, x/1, true&&x, false||x, etc.
+    //-------------------------------------------------------------------------
+    bool algebraic_simplify() {
+        auto& code = func_->instructions;
+        if (code.size() < 2) return false;
+
+        bool changed = false;
+
+        // Look for patterns: LoadConst followed by binary operation
+        for (size_t i = 0; i + 1 < code.size(); ++i) {
+            // Pattern: LoadConst 0, Add -> remove both (identity: x + 0 = x)
+            // Pattern: LoadConst 0, Sub (right) -> remove both (identity: x - 0 = x)
+            // Pattern: LoadConst 1, Mul -> remove both (identity: x * 1 = x)
+            // Pattern: LoadConst 1, Div -> remove both (identity: x / 1 = x)
+            // Pattern: LoadConst 0, Mul -> replace x with 0 (x * 0 = 0)
+
+            if (code[i].operation == Operation::LoadConst) {
+                int32_t const_idx = code[i].operand0.value_or(-1);
+                if (const_idx < 0 || static_cast<size_t>(const_idx) >= func_->constants_.size())
+                    continue;
+
+                Constant* c = func_->constants_[const_idx];
+
+                // Check for integer patterns
+                if (auto* ic = dynamic_cast<Constant::Integer*>(c)) {
+                    int32_t val = ic->value;
+
+                    // x + 0 = x (0 is on top of stack, x below)
+                    if (val == 0 && code[i+1].operation == Operation::Add) {
+                        code[i] = Instruction(Operation::Goto, 1);
+                        code[i+1] = Instruction(Operation::Goto, 1);
+                        changed = true;
+                        continue;
+                    }
+
+                    // x - 0 = x
+                    if (val == 0 && code[i+1].operation == Operation::Sub) {
+                        code[i] = Instruction(Operation::Goto, 1);
+                        code[i+1] = Instruction(Operation::Goto, 1);
+                        changed = true;
+                        continue;
+                    }
+
+                    // x * 1 = x
+                    if (val == 1 && code[i+1].operation == Operation::Mul) {
+                        code[i] = Instruction(Operation::Goto, 1);
+                        code[i+1] = Instruction(Operation::Goto, 1);
+                        changed = true;
+                        continue;
+                    }
+
+                    // x / 1 = x
+                    if (val == 1 && code[i+1].operation == Operation::Div) {
+                        code[i] = Instruction(Operation::Goto, 1);
+                        code[i+1] = Instruction(Operation::Goto, 1);
+                        changed = true;
+                        continue;
+                    }
+
+                    // x * 0 = 0: Replace entire computation with 0
+                    // This is trickier - we need to pop x and push 0
+                    if (val == 0 && code[i+1].operation == Operation::Mul) {
+                        // Convert: [x on stack] LoadConst 0, Mul
+                        // To: Pop, LoadConst 0
+                        code[i] = Instruction(Operation::Pop, std::nullopt);
+                        int32_t zero_idx = find_or_add_int_constant(0);
+                        code[i+1] = Instruction(Operation::LoadConst, zero_idx);
+                        changed = true;
+                        continue;
+                    }
+                }
+
+                // Check for boolean patterns
+                if (auto* bc = dynamic_cast<Constant::Boolean*>(c)) {
+                    bool val = bc->value;
+
+                    // true && x = x (but x is computed first, then true is pushed)
+                    // So pattern is: [x on stack] LoadConst true, And -> just x
+                    if (val == true && code[i+1].operation == Operation::And) {
+                        code[i] = Instruction(Operation::Goto, 1);
+                        code[i+1] = Instruction(Operation::Goto, 1);
+                        changed = true;
+                        continue;
+                    }
+
+                    // false && x = false
+                    if (val == false && code[i+1].operation == Operation::And) {
+                        code[i] = Instruction(Operation::Pop, std::nullopt);
+                        int32_t false_idx = find_or_add_bool_constant(false);
+                        code[i+1] = Instruction(Operation::LoadConst, false_idx);
+                        changed = true;
+                        continue;
+                    }
+
+                    // false || x = x
+                    if (val == false && code[i+1].operation == Operation::Or) {
+                        code[i] = Instruction(Operation::Goto, 1);
+                        code[i+1] = Instruction(Operation::Goto, 1);
+                        changed = true;
+                        continue;
+                    }
+
+                    // true || x = true
+                    if (val == true && code[i+1].operation == Operation::Or) {
+                        code[i] = Instruction(Operation::Pop, std::nullopt);
+                        int32_t true_idx = find_or_add_bool_constant(true);
+                        code[i+1] = Instruction(Operation::LoadConst, true_idx);
+                        changed = true;
+                        continue;
+                    }
+                }
+            }
+        }
+
+        // Three-instruction patterns for left-hand side constants
+        // Pattern: LoadConst, [something], BinaryOp
+        for (size_t i = 0; i + 2 < code.size(); ++i) {
+            if (code[i].operation != Operation::LoadConst) continue;
+
+            int32_t const_idx = code[i].operand0.value_or(-1);
+            if (const_idx < 0 || static_cast<size_t>(const_idx) >= func_->constants_.size())
+                continue;
+
+            Constant* c = func_->constants_[const_idx];
+
+            if (auto* ic = dynamic_cast<Constant::Integer*>(c)) {
+                int32_t val = ic->value;
+
+                // 0 + x = x (commutative)
+                if (val == 0 && code[i+2].operation == Operation::Add) {
+                    // Need to check that code[i+1] pushes exactly one value
+                    // For safety, only handle simple cases
+                    if (code[i+1].operation == Operation::LoadLocal ||
+                        code[i+1].operation == Operation::LoadGlobal ||
+                        code[i+1].operation == Operation::LoadConst) {
+                        code[i] = Instruction(Operation::Goto, 1);
+                        code[i+2] = Instruction(Operation::Goto, 1);
+                        changed = true;
+                        continue;
+                    }
+                }
+
+                // 1 * x = x (commutative)
+                if (val == 1 && code[i+2].operation == Operation::Mul) {
+                    if (code[i+1].operation == Operation::LoadLocal ||
+                        code[i+1].operation == Operation::LoadGlobal ||
+                        code[i+1].operation == Operation::LoadConst) {
+                        code[i] = Instruction(Operation::Goto, 1);
+                        code[i+2] = Instruction(Operation::Goto, 1);
+                        changed = true;
+                        continue;
+                    }
+                }
+
+                // 0 * x = 0 (commutative) - x becomes dead
+                if (val == 0 && code[i+2].operation == Operation::Mul) {
+                    if (code[i+1].operation == Operation::LoadLocal ||
+                        code[i+1].operation == Operation::LoadGlobal ||
+                        code[i+1].operation == Operation::LoadConst) {
+                        // Replace the load with NOP, keep LoadConst 0, remove Mul
+                        code[i+1] = Instruction(Operation::Goto, 1);
+                        code[i+2] = Instruction(Operation::Goto, 1);
+                        changed = true;
+                        continue;
+                    }
+                }
+            }
+        }
+
+        return changed;
+    }
+
+    //-------------------------------------------------------------------------
+    // Pass 3: Strength Reduction
+    // Replaces expensive operations with cheaper equivalents
+    // - Multiply by power of 2 -> left shift (not available in MITScript, skip)
+    // - Divide by power of 2 -> right shift (not available in MITScript, skip)
+    // - x * 2 -> x + x
+    // - x == x -> true (for integers)
+    //-------------------------------------------------------------------------
+    bool strength_reduce() {
+        auto& code = func_->instructions;
+        if (code.size() < 2) return false;
+
+        bool changed = false;
+
+        for (size_t i = 0; i + 1 < code.size(); ++i) {
+            // Pattern: LoadConst 2, Mul -> Dup, Add (x * 2 = x + x)
+            if (code[i].operation == Operation::LoadConst &&
+                code[i+1].operation == Operation::Mul) {
+                int32_t const_idx = code[i].operand0.value_or(-1);
+                if (const_idx >= 0 && static_cast<size_t>(const_idx) < func_->constants_.size()) {
+                    if (auto* ic = dynamic_cast<Constant::Integer*>(func_->constants_[const_idx])) {
+                        if (ic->value == 2) {
+                            // x * 2 -> x + x (Dup then Add)
+                            code[i] = Instruction(Operation::Dup, std::nullopt);
+                            code[i+1] = Instruction(Operation::Add, std::nullopt);
+                            changed = true;
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            // Pattern: Dup, Eq -> Pop, LoadConst true (x == x is always true for integers)
+            // Note: This is only safe for value types (integers, bools), not references
+            // For safety, we skip this optimization as MITScript has reference equality
+        }
+
+        // Three-instruction pattern: LoadConst 2, [load], Mul -> [load], Dup, Add
+        for (size_t i = 0; i + 2 < code.size(); ++i) {
+            if (code[i].operation == Operation::LoadConst &&
+                code[i+2].operation == Operation::Mul) {
+                int32_t const_idx = code[i].operand0.value_or(-1);
+                if (const_idx >= 0 && static_cast<size_t>(const_idx) < func_->constants_.size()) {
+                    if (auto* ic = dynamic_cast<Constant::Integer*>(func_->constants_[const_idx])) {
+                        if (ic->value == 2) {
+                            if (code[i+1].operation == Operation::LoadLocal ||
+                                code[i+1].operation == Operation::LoadGlobal ||
+                                code[i+1].operation == Operation::LoadConst) {
+                                // 2 * x -> x + x
+                                // Reorder: remove LoadConst 2, add Dup after load
+                                code[i] = Instruction(Operation::Goto, 1);
+                                // Insert Dup after the load - but we can't insert, so transform
+                                // Actually, pattern is: LoadConst 2, LoadX, Mul
+                                // We want: LoadX, Dup, Add
+                                // Swap positions conceptually
+                                auto load_inst = code[i+1];
+                                code[i] = load_inst;
+                                code[i+1] = Instruction(Operation::Dup, std::nullopt);
+                                code[i+2] = Instruction(Operation::Add, std::nullopt);
+                                changed = true;
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return changed;
+    }
+
+    //-------------------------------------------------------------------------
+    // Pass 4: Constant Folding
     //-------------------------------------------------------------------------
     bool fold_constants() {
         auto& code = func_->instructions;
