@@ -206,6 +206,8 @@ struct CFGBuilder : public Visitor {
       collectGlobals(wh->body.get());
       return;
     }
+    // Other statement types (Return, Assignment, CallStatement) don't contain
+    // nested statements with Global declarations, so we can ignore them
   }
 
   void endWithJump(BasicBlock *from, BasicBlock *to) {
@@ -592,8 +594,13 @@ struct CFGBuilder : public Visitor {
     }
 
     // 6) record free vars of this child
-    childFunction->freeVars.assign(subBuilder.capturedFreeVars.begin(),
-                                   subBuilder.capturedFreeVars.end());
+    // Filter out any variables that are declared as global in this function
+    childFunction->freeVars.clear();
+    for (const auto &fv : subBuilder.capturedFreeVars) {
+      if (subBuilder.funcGlobals.count(fv) == 0) {
+        childFunction->freeVars.push_back(fv);
+      }
+    }
     std::sort(childFunction->freeVars.begin(), childFunction->freeVars.end());
 
     // mark our own locals as by-ref if they’re captured
