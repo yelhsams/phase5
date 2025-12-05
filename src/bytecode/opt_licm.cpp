@@ -388,11 +388,12 @@ static void run_on(Function *func) {
       if (modified.count(inst.src1) || modified.count(inst.src2))
         continue;
 
-      // Hoist by cloning before the loop header. Keep the original instruction
-      // in place to preserve semantics; register values persist across
-      // iterations, so later passes may still eliminate the redundant work
-      // safely without risking mis-compilation here.
+      // Hoist by cloning before header and replacing with a cheap self-move.
       preheader_inserts[loop.header].push_back(inst);
+      inst.op = Operation::LoadLocal;
+      inst.src1 = inst.dst;
+      inst.src2 = 0;
+      inst.imm = 0;
     }
     func->register_count = std::max<uint16_t>(func->register_count, max_reg + 1);
   }

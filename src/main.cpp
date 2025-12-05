@@ -260,10 +260,10 @@ int main(int argc, char **argv) {
         bytecode::opt_peephole::peephole_optimize(bytecode_func);
       }
 
-      if (has_opt(command, "inline")) {
+      if (has_opt(command, "inline") || has_opt(command, "all")) {
         bytecode::opt_inline::inline_functions(bytecode_func);
       }
-      if (has_opt(command, "licm")) {
+      if (has_opt(command, "licm") || has_opt(command, "all")) {
         bytecode::opt_licm::run(bytecode_func);
       }
 
