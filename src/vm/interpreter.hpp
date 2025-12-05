@@ -4,7 +4,6 @@
 #include "bytecode/types.hpp"
 #include "gc/gc.hpp"
 #include <algorithm>
-#include <array>
 #include <exception>
 #include <iostream>
 #include <map>
@@ -319,48 +318,6 @@ private:
   Value *bool_true_singleton = nullptr;
   Value *bool_false_singleton = nullptr;
 
-  // Small integer cache: cache integers in range [-128, 255] to avoid allocations
-  // This is a common optimization (used by JVM, Python, etc.)
-  static constexpr int32_t SMALL_INT_MIN = -128;
-  static constexpr int32_t SMALL_INT_MAX = 255;
-  static constexpr size_t SMALL_INT_CACHE_SIZE = SMALL_INT_MAX - SMALL_INT_MIN + 1;
-  std::array<Value*, SMALL_INT_CACHE_SIZE> small_int_cache{};
-  bool small_int_cache_initialized = false;
-
-  // String interning: cache frequently used strings
-  std::unordered_map<std::string, Value*> interned_strings;
-
-  // Initialize small integer cache
-  void init_small_int_cache() {
-    if (small_int_cache_initialized) return;
-    for (int32_t i = SMALL_INT_MIN; i <= SMALL_INT_MAX; ++i) {
-      small_int_cache[i - SMALL_INT_MIN] = heap.allocate<Integer>(i);
-    }
-    small_int_cache_initialized = true;
-  }
-
-  // Get cached small integer or allocate new one
-  Value* get_integer(int32_t value) {
-    if (value >= SMALL_INT_MIN && value <= SMALL_INT_MAX) {
-      return small_int_cache[value - SMALL_INT_MIN];
-    }
-    return allocate<Integer>(value);
-  }
-
-  // Get interned string or create new one
-  Value* get_interned_string(const std::string& value) {
-    auto it = interned_strings.find(value);
-    if (it != interned_strings.end()) {
-      return it->second;
-    }
-    Value* str = allocate<String>(value);
-    // Only intern short strings to avoid memory bloat
-    if (value.size() <= 64) {
-      interned_strings[value] = str;
-    }
-    return str;
-  }
-
   // Wrapper for heap allocation that triggers GC periodically
   template <typename T, typename... Args> T *allocate(Args &&...args) {
     curr_heap_bytes += sizeof(T);
@@ -479,7 +436,7 @@ private:
     case TaggedValue::Kind::Boolean:
       return tv.b ? bool_true_singleton : bool_false_singleton;
     case TaggedValue::Kind::Integer:
-      return get_integer(tv.i);  // Use cached integers
+      return allocate<Integer>(tv.i);
     case TaggedValue::Kind::HeapPtr:
       return tv.ptr;
     }
@@ -1476,18 +1433,6 @@ private:
     if (bool_true_singleton) roots.push_back(bool_true_singleton);
     if (bool_false_singleton) roots.push_back(bool_false_singleton);
 
-    // Add small integer cache as roots
-    if (small_int_cache_initialized) {
-      for (Value* v : small_int_cache) {
-        if (v) roots.push_back(v);
-      }
-    }
-
-    // Add interned strings as roots
-    for (auto& [str, val] : interned_strings) {
-      if (val) roots.push_back(val);
-    }
-
     // Add all locals from all frames in call stack
     for (Frame *frame : call_stack) {
       for (const TaggedValue &local : frame->locals) {
@@ -2352,8 +2297,6 @@ public:
     bool_true_singleton = heap.allocate<Boolean>(true);
     bool_false_singleton = heap.allocate<Boolean>(false);
 
-    // Initialize small integer cache for faster integer operations
-    init_small_int_cache();
   }
 
   void run(bytecode::Function *main_func) {
