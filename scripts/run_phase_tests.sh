@@ -50,6 +50,11 @@ for test_file in "${tests[@]}"; do
   out_file="${base}.out"
   in_file="${base}.in"
 
+  # Check for alternative output file naming: test.mit.out
+  if [ ! -f "$out_file" ] && [ -f "${test_file}.out" ]; then
+    out_file="${test_file}.out"
+  fi
+
   # For non-"bad" tests, an expected output file is required.
   if [ "$is_bad" = false ] && [ ! -f "$out_file" ]; then
     printf "SKIP %-24s (missing %s)\n" "$rel_name" "$out_file"
