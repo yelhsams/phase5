@@ -7,9 +7,9 @@ cd "$(dirname "$0")"
 
 # If no args, defer to the binary help.
 if [ $# -eq 0 ]; then
-    ./build/cmake/release/mitscript -h
+    ./build/release/mitscript -h
     exit 1
 fi
 
 # Hand off all arguments directly to the binary; it now handles derby/VM/mem/opt.
-./build/cmake/release/mitscript "$@"
+./build/release/mitscript "$@"

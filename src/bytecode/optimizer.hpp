@@ -727,6 +727,16 @@ private:
             }
         }
 
+        // Also mark all local_reference_vars as read (they may be accessed via PushReference)
+        // We need to map local_ref_var names to their indices in local_vars
+        for (const auto& ref_var : func_->local_reference_vars_) {
+            auto it = std::find(func_->local_vars_.begin(), func_->local_vars_.end(), ref_var);
+            if (it != func_->local_vars_.end()) {
+                int32_t idx = static_cast<int32_t>(std::distance(func_->local_vars_.begin(), it));
+                ever_read.insert(idx);
+            }
+        }
+
         // Second pass: eliminate stores to locals never read
         // (This is a simple version - a full analysis would be more precise)
         for (auto& inst : code) {
