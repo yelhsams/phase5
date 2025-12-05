@@ -12,6 +12,7 @@
 #include "mitscript-interpreter/parser.hpp"
 #include "vm/interpreter.hpp"
 #include "bytecode/opt_inline.hpp"
+#include "bytecode/optimizer.hpp"
 #include <iostream>
 #include <algorithm>
 
@@ -145,6 +146,12 @@ int main(int argc, char **argv) {
 
       BytecodeConverter bc;
       bytecode::Function *bytecode = bc.convert(cfg, /*is_toplevel=*/true);
+
+      // Run bytecode optimizations (dead code elimination, constant folding, etc.)
+      if (has_opt(command, "optimize") || has_opt(command, "dce") || has_opt(command, "all")) {
+        bytecode::optimizer::optimize(bytecode);
+      }
+
       bytecode::prettyprint(bytecode, *command.output_stream);
     } catch (const std::exception &e) {
       std::cout << "Compilation error:\n";
@@ -188,7 +195,10 @@ int main(int argc, char **argv) {
 
       BytecodeConverter bc;
       bytecode::Function *bytecode = bc.convert(cfg, /*is_toplevel=*/true);
-      // bytecode::opt_inline::inline_functions(bytecode);
+
+      // Run bytecode optimizations (dead code elimination, constant folding, etc.)
+      bytecode::optimizer::optimize(bytecode);
+
       vm::VM vm(command.mem);
       vm.run(bytecode);
     } catch (const std::exception &e) {
@@ -232,7 +242,10 @@ int main(int argc, char **argv) {
 
       size_t max_mem_mb = command.mem;
 
-      // Optimization: inlining (disabled for now; current pass is not semantics-safe)
+      // Run bytecode optimizations (dead code elimination, constant folding, etc.)
+      bytecode::optimizer::optimize(bytecode_func);
+
+      // Optimization: function inlining
       bytecode::opt_inline::inline_functions(bytecode_func);
 
       // Create VM and execute
