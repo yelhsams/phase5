@@ -76,12 +76,12 @@ function
 			]
 		}
 	],
-	constants = [12, 24, "point1"],
+	constants = [12, 24, "point1", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [point, display, x, y, name, print, input, intcast],
+	names = [point, x, y, name, display, print, input, intcast],
 	instructions = 
 	[
 		load_func	0
@@ -95,21 +95,23 @@ function
 		store_global	7
 		alloc_record
 		dup
-		dup
-		dup
 		load_const	0
-		field_store	2
+		field_store	1
+		dup
 		load_const	1
-		field_store	3
+		field_store	2
+		dup
 		load_const	2
-		field_store	4
+		field_store	3
 		store_global	0
 		load_func	3
 		alloc_closure	0
-		store_global	1
-		load_global	1
+		store_global	4
+		load_global	4
 		load_global	0
 		call	1
 		pop
+		load_const	3
+		return
 	]
 }

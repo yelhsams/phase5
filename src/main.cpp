@@ -1,20 +1,19 @@
 #include "cli.hpp"
 
+#include "bytecode/opt_constprop.hpp"
+#include "bytecode/opt_deadcode.hpp"
+#include "bytecode/opt_inline.hpp"
 #include "bytecode/parser.hpp"
 #include "bytecode/prettyprinter.hpp"
-#include "mitscript-interpreter/interpreter.hpp"
-#include "bytecode/prettyprinter.hpp"
 #include "mitscript-compiler/bytecode-converter.hpp"
-#include "mitscript-compiler/converter.hpp"
-#include "mitscript-compiler/cfg-prettyprinter.hpp"
 #include "mitscript-compiler/constant-propagation.hpp"
+#include "mitscript-compiler/converter.hpp"
+#include "mitscript-interpreter/interpreter.hpp"
 #include "mitscript-interpreter/lexer.hpp"
 #include "mitscript-interpreter/parser.hpp"
 #include "vm/interpreter.hpp"
-#include "bytecode/opt_inline.hpp"
-#include "bytecode/optimizer.hpp"
-#include <iostream>
 #include <algorithm>
+#include <iostream>
 
 static std::string read_istream(std::istream &is) {
   return std::string(std::istreambuf_iterator<char>(is),
@@ -146,12 +145,6 @@ int main(int argc, char **argv) {
 
       BytecodeConverter bc;
       bytecode::Function *bytecode = bc.convert(cfg, /*is_toplevel=*/true);
-
-      // Run bytecode optimizations (dead code elimination, constant folding, etc.)
-      if (has_opt(command, "optimize") || has_opt(command, "dce") || has_opt(command, "all")) {
-        bytecode::optimizer::optimize(bytecode);
-      }
-
       bytecode::prettyprint(bytecode, *command.output_stream);
     } catch (const std::exception &e) {
       std::cout << "Compilation error:\n";
@@ -162,22 +155,11 @@ int main(int argc, char **argv) {
     break;
   }
   case CommandKind::DERBY: {
-    // Compile source to bytecode and immediately execute on the VM.
-    mitscript::Lexer lexer(contents);
-    std::vector<mitscript::Token> tokens = lexer.lex();
-
-    for (const auto &token : tokens) {
-      if (token.kind == mitscript::TokenKind::ERROR) {
-        had_error = true;
-        std::cerr << "Error from lexer at line " << token.start_line
-                  << ", column " << token.start_col << ": " << token.text
-                  << "\n";
-      }
-    }
-    if (had_error)
-      break;
-
     try {
+      // Compile source to bytecode and immediately execute on the VM.
+      mitscript::Lexer lexer(contents);
+      std::vector<mitscript::Token> tokens = lexer.lex();
+
       mitscript::Parser parser(tokens);
       auto ast = parser.parse();
 
@@ -196,9 +178,18 @@ int main(int argc, char **argv) {
       BytecodeConverter bc;
       bytecode::Function *bytecode = bc.convert(cfg, /*is_toplevel=*/true);
 
-      // Run bytecode optimizations (dead code elimination, constant folding, etc.)
-      bytecode::optimizer::optimize(bytecode);
+      // Optional optimization: constant propagation on bytecode
+      if (has_opt(command, "bytecode-constprop") || has_opt(command, "all")) {
+        bytecode::opt_constprop::constant_propagate(bytecode);
+      }
 
+      // Optional optimization: dead code elimination (runs after constant
+      // propagation)
+      if (has_opt(command, "deadcode") || has_opt(command, "all")) {
+        bytecode::opt_deadcode::eliminate_dead_code(bytecode);
+      }
+
+      // bytecode::opt_inline::inline_functions(bytecode);
       vm::VM vm(command.mem);
       vm.run(bytecode);
     } catch (const std::exception &e) {
@@ -242,10 +233,19 @@ int main(int argc, char **argv) {
 
       size_t max_mem_mb = command.mem;
 
-      // Run bytecode optimizations (dead code elimination, constant folding, etc.)
-      bytecode::optimizer::optimize(bytecode_func);
+      // Optional optimization: constant propagation on bytecode
+      if (has_opt(command, "bytecode-constprop") || has_opt(command, "all")) {
+        bytecode::opt_constprop::constant_propagate(bytecode_func);
+      }
 
-      // Optimization: function inlining
+      // Optional optimization: dead code elimination (runs after constant
+      // propagation)
+      if (has_opt(command, "deadcode") || has_opt(command, "all")) {
+        bytecode::opt_deadcode::eliminate_dead_code(bytecode_func);
+      }
+
+      // Optimization: inlining (disabled for now; current pass is not
+      // semantics-safe)
       bytecode::opt_inline::inline_functions(bytecode_func);
 
       // Create VM and execute
@@ -255,6 +255,11 @@ int main(int argc, char **argv) {
       // Cleanup
       delete bytecode_func;
 
+    } catch (const std::runtime_error &e) {
+      // Catch lexer errors early and return
+      had_error = true;
+      std::cerr << e.what() << "\n";
+      return had_error ? 1 : 0;
     } catch (const vm::InsufficientStackException &e) {
       had_error = true;
       std::cerr << e.what() << "\n";

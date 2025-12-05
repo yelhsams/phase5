@@ -44,7 +44,7 @@ function
 		function
 		{
 			functions = [],
-			constants = ["here", None, "bad"],
+			constants = ["here", None],
 			parameter_count = 0,
 			local_vars = [],
 			local_ref_vars = [],
@@ -58,14 +58,10 @@ function
 				pop
 				load_const	1
 				return
-				load_global	0
-				load_const	2
-				call	1
-				pop
 			]
 		}
 	],
-	constants = ["here2", 1, "bad"],
+	constants = ["here2", 1],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -96,9 +92,5 @@ function
 		pop
 		load_const	1
 		return
-		load_global	1
-		load_const	2
-		call	1
-		pop
 	]
 }

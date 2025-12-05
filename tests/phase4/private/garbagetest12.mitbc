@@ -60,19 +60,20 @@ function
 				load_const	0
 				gt
 				not
-				if	7
+				if	8
 				load_global	1
 				load_local	0
 				load_const	1
 				sub
 				call	1
 				pop
+				goto	1
 				load_const	2
 				return
 			]
 		}
 	],
-	constants = [1000, 0, 200, 1],
+	constants = [1000, 0, 200, 1, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -96,6 +97,7 @@ function
 		store_global	1
 		load_const	1
 		store_global	2
+		goto	1
 		load_global	2
 		load_global	0
 		swap
@@ -111,5 +113,7 @@ function
 		add
 		store_global	2
 		goto	-14
+		load_const	4
+		return
 	]
 }

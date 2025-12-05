@@ -42,7 +42,7 @@ function
 			]
 		}
 	],
-	constants = ["a", "b", "should be 6 ", 3, 2, "should be 3 ", 21, 7, "should be true ", 5, "should be false ", "foo"],
+	constants = ["a", "b", "should be 6 ", 3, 2, "should be 3 ", 21, 7, "should be true ", 5, "should be false ", "foo", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -108,5 +108,7 @@ function
 		add
 		call	1
 		pop
+		load_const	12
+		return
 	]
 }

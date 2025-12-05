@@ -44,23 +44,20 @@ function
 		function
 		{
 			functions = [],
-			constants = [None, 1],
+			constants = [1],
 			parameter_count = 3,
-			local_vars = [tail, start, end, head, i],
-			local_ref_vars = [],
+			local_vars = [tail, start, end, i, head],
+			local_ref_vars = [head, i],
 			free_vars = [],
 			names = [item, tail, self],
 			instructions = 
 			[
-				load_const	0
-				store_local	3
-				load_const	0
-				store_local	4
 				load_local	0
-				store_local	3
-				load_local	1
 				store_local	4
-				load_local	4
+				load_local	1
+				store_local	3
+				goto	1
+				load_local	3
 				load_local	2
 				swap
 				gt
@@ -68,36 +65,36 @@ function
 				if	17
 				alloc_record
 				dup
+				load_local	3
+				field_store	0
 				dup
 				load_local	4
-				field_store	0
-				load_local	3
 				field_store	1
-				store_local	3
-				load_local	3
-				load_local	3
-				field_store	2
-				load_local	4
-				load_const	1
-				add
 				store_local	4
-				goto	-21
+				load_local	4
+				load_local	4
+				field_store	2
 				load_local	3
+				load_const	0
+				add
+				store_local	3
+				goto	-21
+				load_local	4
 				return
 			]
 		}
 	],
-	constants = ["defined", 0, 2000, 100, 1000, "oops", 1, "made", 1999, "done"],
+	constants = ["defined", 0, 2000, 100, 1000, "oops", 1, "made", 1999, "done", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [tail, Cons, head, i, j, print, item, input, intcast],
+	names = [tail, Cons, print, head, i, j, item, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	5
+		store_global	2
 		load_func	1
 		alloc_closure	0
 		store_global	7
@@ -109,7 +106,7 @@ function
 		load_func	3
 		alloc_closure	0
 		store_global	1
-		load_global	5
+		load_global	2
 		load_const	0
 		call	1
 		pop
@@ -118,100 +115,108 @@ function
 		load_const	1
 		load_const	2
 		call	3
-		store_global	2
-		load_const	1
 		store_global	3
-		load_global	3
+		load_const	1
+		store_global	4
+		goto	1
+		load_global	4
 		load_const	3
 		swap
 		gt
 		not
-		if	41
+		if	43
 		load_const	1
-		store_global	4
-		load_global	4
+		store_global	5
+		goto	1
+		load_global	5
 		load_const	4
 		swap
 		gt
 		not
-		if	22
-		load_global	2
+		if	23
+		load_global	3
 		field_load	6
-		load_global	2
+		load_global	3
 		field_load	0
 		field_load	6
 		swap
 		gt
 		not
-		if	5
-		load_global	5
+		if	6
+		load_global	2
 		load_const	5
 		call	1
 		pop
-		load_global	2
+		goto	1
+		load_global	3
 		field_load	0
-		store_global	2
+		store_global	3
+		load_global	5
+		load_const	6
+		add
+		store_global	5
+		goto	-27
+		load_global	1
+		load_global	3
+		load_const	4
+		load_const	2
+		call	3
+		store_global	3
 		load_global	4
 		load_const	6
 		add
 		store_global	4
-		goto	-26
-		load_global	1
+		goto	-47
 		load_global	2
-		load_const	4
-		load_const	2
-		call	3
-		store_global	2
-		load_global	3
-		load_const	6
-		add
-		store_global	3
-		goto	-45
-		load_global	5
 		load_const	7
 		call	1
 		pop
 		load_const	8
-		store_global	3
-		load_global	2
+		store_global	4
+		goto	1
+		load_global	3
 		field_load	0
 		load_global	0
 		eq
 		not
 		not
-		if	30
-		load_global	2
-		field_load	6
+		if	32
 		load_global	3
+		field_load	6
+		load_global	4
 		eq
 		not
 		not
-		if	5
-		load_global	5
+		if	6
+		load_global	2
 		load_const	5
 		call	1
 		pop
-		load_global	3
+		goto	1
+		load_global	4
 		load_const	1
 		swap
 		gt
 		not
-		if	5
-		load_global	5
+		if	6
+		load_global	2
 		load_const	5
 		call	1
 		pop
-		load_global	2
-		field_load	0
-		store_global	2
+		goto	1
 		load_global	3
+		field_load	0
+		store_global	3
+		load_global	4
 		load_const	6
 		sub
-		store_global	3
-		goto	-35
-		load_global	5
+		store_global	4
+		goto	-37
+		load_global	2
 		load_const	9
 		call	1
 		pop
+		load_const	10
+		return
 	]
 }

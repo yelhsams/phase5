@@ -53,24 +53,24 @@ function
 					local_vars = [item],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [length],
+					names = [this, length],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
 						push_ref	0
 						load_ref
-						field_load	0
+						field_load	1
 						load_local	0
 						index_store
 						push_ref	0
 						load_ref
 						push_ref	0
 						load_ref
-						field_load	0
+						field_load	1
 						load_const	0
 						add
-						field_store	0
+						field_store	1
 						load_const	1
 						return
 					]
@@ -78,58 +78,56 @@ function
 				function
 				{
 					functions = [],
-					constants = [None, 0, "[", 1, ", ", "]"],
+					constants = [0, "[", 1, ", ", "]"],
 					parameter_count = 0,
-					local_vars = [i, x],
-					local_ref_vars = [],
+					local_vars = [x, i],
+					local_ref_vars = [i, x],
 					free_vars = [this],
-					names = [length],
+					names = [this, length],
 					instructions = 
 					[
-						load_const	0
-						store_local	0
 						load_const	0
 						store_local	1
 						load_const	1
 						store_local	0
-						load_const	2
-						store_local	1
-						load_local	0
-						push_ref	0
+						goto	1
+						load_local	1
+						push_ref	2
 						load_ref
-						field_load	0
+						field_load	1
 						swap
 						gt
 						not
-						if	27
-						load_local	1
-						push_ref	0
-						load_ref
+						if	28
 						load_local	0
+						push_ref	2
+						load_ref
+						load_local	1
 						index_load
 						add
-						store_local	1
-						load_local	0
-						push_ref	0
+						store_local	0
+						load_local	1
+						push_ref	2
 						load_ref
-						field_load	0
-						load_const	3
+						field_load	1
+						load_const	2
 						sub
 						eq
 						not
 						not
-						if	5
-						load_local	1
-						load_const	4
-						add
-						store_local	1
+						if	6
 						load_local	0
 						load_const	3
 						add
 						store_local	0
-						goto	-33
+						goto	1
 						load_local	1
-						load_const	5
+						load_const	2
+						add
+						store_local	1
+						goto	-34
+						load_local	0
+						load_const	4
 						add
 						return
 					]
@@ -137,19 +135,18 @@ function
 				function
 				{
 					functions = [],
-					constants = [None, 1],
+					constants = [1],
 					parameter_count = 2,
 					local_vars = [start, stop, result],
-					local_ref_vars = [],
+					local_ref_vars = [result, start],
 					free_vars = [this],
-					names = [Array, append],
+					names = [Array, append, this],
 					instructions = 
 					[
-						load_const	0
-						store_local	2
 						load_global	0
 						call	0
 						store_local	2
+						goto	1
 						load_local	0
 						load_local	1
 						swap
@@ -158,14 +155,14 @@ function
 						if	14
 						load_local	2
 						field_load	1
-						push_ref	0
+						push_ref	2
 						load_ref
 						load_local	0
 						index_load
 						call	1
 						pop
 						load_local	0
-						load_const	1
+						load_const	0
 						add
 						store_local	0
 						goto	-18
@@ -174,7 +171,7 @@ function
 					]
 				}
 			],
-			constants = [None, 0],
+			constants = [0],
 			parameter_count = 0,
 			local_vars = [this],
 			local_ref_vars = [this],
@@ -182,23 +179,21 @@ function
 			names = [length, append, string, splice],
 			instructions = 
 			[
-				load_const	0
-				store_local	0
 				alloc_record
 				dup
-				dup
-				dup
-				dup
-				load_const	1
+				load_const	0
 				field_store	0
+				dup
 				load_func	0
 				push_ref	0
 				alloc_closure	1
 				field_store	1
+				dup
 				load_func	1
 				push_ref	0
 				alloc_closure	1
 				field_store	2
+				dup
 				load_func	2
 				push_ref	0
 				alloc_closure	1
@@ -211,27 +206,17 @@ function
 		function
 		{
 			functions = [],
-			constants = [None, 2, 0, 1],
+			constants = [2, 0, 1],
 			parameter_count = 1,
-			local_vars = [arr, first_half, second_half, result, first_i, second_i],
-			local_ref_vars = [],
+			local_vars = [arr, first_i, result, second_i, second_half, first_half],
+			local_ref_vars = [first_half, second_half, result, first_i, second_i],
 			free_vars = [],
 			names = [length, mergesort, splice, Array, append],
 			instructions = 
 			[
-				load_const	0
-				store_local	1
-				load_const	0
-				store_local	2
-				load_const	0
-				store_local	3
-				load_const	0
-				store_local	4
-				load_const	0
-				store_local	5
 				load_local	0
 				field_load	0
-				load_const	1
+				load_const	0
 				swap
 				gt
 				not
@@ -241,134 +226,138 @@ function
 				load_global	1
 				load_local	0
 				field_load	2
-				load_const	2
+				load_const	1
 				load_local	0
 				field_load	0
-				load_const	1
+				load_const	0
 				div
 				call	2
 				call	1
-				store_local	1
+				store_local	5
 				load_global	1
 				load_local	0
 				field_load	2
 				load_local	0
 				field_load	0
-				load_const	1
+				load_const	0
 				div
 				load_local	0
 				field_load	0
 				call	2
 				call	1
-				store_local	2
+				store_local	4
 				load_global	3
 				call	0
+				store_local	2
+				load_const	1
+				store_local	1
+				load_const	1
 				store_local	3
-				load_const	2
-				store_local	4
-				load_const	2
-				store_local	5
-				load_local	4
+				goto	1
 				load_local	1
+				load_local	5
 				field_load	0
 				swap
 				gt
-				load_local	5
-				load_local	2
+				load_local	3
+				load_local	4
 				field_load	0
 				swap
 				gt
 				and
 				not
-				if	35
-				load_local	1
-				load_local	4
-				index_load
-				load_local	2
+				if	36
 				load_local	5
+				load_local	1
+				index_load
+				load_local	4
+				load_local	3
 				index_load
 				swap
 				gt
 				not
 				if	13
-				load_local	3
-				field_load	4
-				load_local	1
-				load_local	4
-				index_load
-				call	1
-				pop
-				load_local	4
-				load_const	3
-				add
-				store_local	4
-				goto	12
-				load_local	3
-				field_load	4
 				load_local	2
+				field_load	4
 				load_local	5
+				load_local	1
 				index_load
 				call	1
 				pop
-				load_local	5
-				load_const	3
-				add
-				store_local	5
-				goto	-46
-				load_local	4
 				load_local	1
+				load_const	2
+				add
+				store_local	1
+				goto	13
+				load_local	2
+				field_load	4
+				load_local	4
+				load_local	3
+				index_load
+				call	1
+				pop
+				load_local	3
+				load_const	2
+				add
+				store_local	3
+				goto	1
+				goto	-47
+				goto	1
+				load_local	1
+				load_local	5
 				field_load	0
 				swap
 				gt
 				not
 				if	13
-				load_local	3
+				load_local	2
 				field_load	4
+				load_local	5
 				load_local	1
-				load_local	4
 				index_load
 				call	1
 				pop
-				load_local	4
-				load_const	3
+				load_local	1
+				load_const	2
 				add
-				store_local	4
+				store_local	1
 				goto	-18
-				load_local	5
-				load_local	2
+				goto	1
+				load_local	3
+				load_local	4
 				field_load	0
 				swap
 				gt
 				not
 				if	13
-				load_local	3
-				field_load	4
 				load_local	2
-				load_local	5
+				field_load	4
+				load_local	4
+				load_local	3
 				index_load
 				call	1
 				pop
-				load_local	5
-				load_const	3
-				add
-				store_local	5
-				goto	-18
 				load_local	3
+				load_const	2
+				add
+				store_local	3
+				goto	-18
+				load_local	2
 				return
 			]
 		}
 	],
-	constants = [5, 59, 1, 3, 2, 30, 500, 0, "Unsorted array", "Sorted array"],
+	constants = [5, 59, 1, 3, 2, 30, 500, 0, "Unsorted array", "Sorted array", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [Array, mergesort, unsorted, N, sorted, append, print, string, input, intcast],
+	names = [Array, mergesort, unsorted, append, N, print, string, sorted, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	6
+		store_global	5
 		load_func	1
 		alloc_closure	0
 		store_global	8
@@ -385,86 +374,89 @@ function
 		call	0
 		store_global	2
 		load_global	2
-		field_load	5
+		field_load	3
 		load_const	0
 		call	1
 		pop
 		load_global	2
-		field_load	5
+		field_load	3
 		load_const	1
 		call	1
 		pop
 		load_global	2
-		field_load	5
+		field_load	3
 		load_const	2
 		neg
 		call	1
 		pop
 		load_global	2
-		field_load	5
+		field_load	3
 		load_const	3
 		call	1
 		pop
 		load_global	2
-		field_load	5
+		field_load	3
 		load_const	4
 		call	1
 		pop
 		load_global	2
-		field_load	5
+		field_load	3
 		load_const	0
 		call	1
 		pop
 		load_global	2
-		field_load	5
+		field_load	3
 		load_const	5
 		call	1
 		pop
 		load_global	2
-		field_load	5
+		field_load	3
 		load_const	2
 		call	1
 		pop
 		load_const	6
-		store_global	3
-		load_global	3
+		store_global	4
+		goto	1
+		load_global	4
 		load_const	7
 		gt
 		not
 		if	11
 		load_global	2
-		field_load	5
-		load_global	3
+		field_load	3
+		load_global	4
 		call	1
 		pop
-		load_global	3
+		load_global	4
 		load_const	2
 		sub
-		store_global	3
+		store_global	4
 		goto	-14
-		load_global	6
+		load_global	5
 		load_const	8
 		call	1
 		pop
-		load_global	6
+		load_global	5
 		load_global	2
-		field_load	7
+		field_load	6
 		call	0
 		call	1
 		pop
 		load_global	1
 		load_global	2
 		call	1
-		store_global	4
-		load_global	6
+		store_global	7
+		load_global	5
 		load_const	9
 		call	1
 		pop
-		load_global	6
-		load_global	4
-		field_load	7
+		load_global	5
+		load_global	7
+		field_load	6
 		call	0
 		call	1
 		pop
+		load_const	10
+		return
 	]
 }

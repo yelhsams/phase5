@@ -44,34 +44,32 @@ function
 		function
 		{
 			functions = [],
-			constants = [None, "hello", "bye"],
+			constants = ["hello", "bye", None],
 			parameter_count = 0,
 			local_vars = [a],
-			local_ref_vars = [],
+			local_ref_vars = [a],
 			free_vars = [],
 			names = [a1, a2, print],
 			instructions = 
 			[
-				load_const	0
-				store_local	0
 				alloc_record
 				dup
+				load_const	0
+				field_store	0
 				dup
 				load_const	1
-				field_store	0
-				load_const	2
 				field_store	1
 				store_local	0
 				load_global	2
 				load_local	0
 				call	1
 				pop
-				load_const	0
+				load_const	2
 				return
 			]
 		}
 	],
-	constants = [10000, 0, 1],
+	constants = [10000, 0, 1, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -90,6 +88,7 @@ function
 		store_global	4
 		load_const	0
 		store_global	0
+		goto	1
 		load_global	0
 		load_const	1
 		gt
@@ -106,5 +105,7 @@ function
 		sub
 		store_global	0
 		goto	-15
+		load_const	3
+		return
 	]
 }

@@ -44,48 +44,45 @@ function
 		function
 		{
 			functions = [],
-			constants = [None, "", 0, 1],
+			constants = ["", 0, 1],
 			parameter_count = 2,
-			local_vars = [letter, count, return_val, c],
-			local_ref_vars = [],
+			local_vars = [letter, count, c, return_val],
+			local_ref_vars = [return_val, c],
 			free_vars = [],
 			names = [],
 			instructions = 
 			[
 				load_const	0
-				store_local	2
-				load_const	0
 				store_local	3
 				load_const	1
 				store_local	2
-				load_const	2
-				store_local	3
-				load_local	3
+				goto	1
+				load_local	2
 				load_local	1
 				swap
 				gt
 				not
 				if	10
-				load_local	2
+				load_local	3
 				load_local	0
 				add
-				store_local	2
-				load_local	3
-				load_const	3
-				add
 				store_local	3
-				goto	-14
 				load_local	2
+				load_const	2
+				add
+				store_local	2
+				goto	-14
+				load_local	3
 				return
 			]
 		}
 	],
-	constants = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", 0, 10000, "_", 27, 1, 26],
+	constants = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", 0, 10000, "_", 27, 1, 26, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [LETTERS, letter_replicate, i, letter_index, letter, my_string, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, print, input, intcast],
+	names = [LETTERS, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, letter_replicate, i, letter_index, letter, my_string, print, input, intcast],
 	instructions = 
 	[
 		load_func	0
@@ -99,127 +96,131 @@ function
 		store_global	34
 		alloc_record
 		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
 		load_const	0
-		field_store	6
+		field_store	1
+		dup
 		load_const	1
-		field_store	7
+		field_store	2
+		dup
 		load_const	2
-		field_store	8
+		field_store	3
+		dup
 		load_const	3
-		field_store	9
+		field_store	4
+		dup
 		load_const	4
-		field_store	10
+		field_store	5
+		dup
 		load_const	5
-		field_store	11
+		field_store	6
+		dup
 		load_const	6
-		field_store	12
+		field_store	7
+		dup
 		load_const	7
-		field_store	13
+		field_store	8
+		dup
 		load_const	8
-		field_store	14
+		field_store	9
+		dup
 		load_const	9
-		field_store	15
+		field_store	10
+		dup
 		load_const	10
-		field_store	16
+		field_store	11
+		dup
 		load_const	11
-		field_store	17
+		field_store	12
+		dup
 		load_const	12
-		field_store	18
+		field_store	13
+		dup
 		load_const	13
-		field_store	19
+		field_store	14
+		dup
 		load_const	14
-		field_store	20
+		field_store	15
+		dup
 		load_const	15
-		field_store	21
+		field_store	16
+		dup
 		load_const	16
-		field_store	22
+		field_store	17
+		dup
 		load_const	17
-		field_store	23
+		field_store	18
+		dup
 		load_const	18
-		field_store	24
+		field_store	19
+		dup
 		load_const	19
-		field_store	25
+		field_store	20
+		dup
 		load_const	20
-		field_store	26
+		field_store	21
+		dup
 		load_const	21
-		field_store	27
+		field_store	22
+		dup
 		load_const	22
-		field_store	28
+		field_store	23
+		dup
 		load_const	23
-		field_store	29
+		field_store	24
+		dup
 		load_const	24
-		field_store	30
+		field_store	25
+		dup
 		load_const	25
-		field_store	31
+		field_store	26
 		store_global	0
 		load_func	3
 		alloc_closure	0
-		store_global	1
+		store_global	27
 		load_const	26
-		store_global	2
+		store_global	28
 		load_const	26
-		store_global	3
-		load_global	2
+		store_global	29
+		goto	1
+		load_global	28
 		load_const	27
 		swap
 		gt
 		not
-		if	32
+		if	33
 		load_global	0
 		load_const	28
-		load_global	3
+		load_global	29
 		add
 		index_load
-		store_global	4
-		load_global	1
-		load_global	4
+		store_global	30
+		load_global	27
+		load_global	30
 		load_const	29
 		call	2
-		store_global	5
+		store_global	31
 		load_global	32
-		load_global	5
+		load_global	31
 		call	1
 		pop
-		load_global	3
+		load_global	29
 		load_const	30
 		add
-		store_global	3
-		load_global	3
+		store_global	29
+		load_global	29
 		load_const	31
 		eq
 		not
-		if	3
+		if	4
 		load_const	26
-		store_global	3
-		load_global	2
+		store_global	29
+		goto	1
+		load_global	28
 		load_const	30
 		add
-		store_global	2
-		goto	-36
+		store_global	28
+		goto	-37
+		load_const	32
+		return
 	]
 }

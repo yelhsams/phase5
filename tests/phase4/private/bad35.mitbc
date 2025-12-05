@@ -69,7 +69,7 @@ function
 			]
 		}
 	],
-	constants = [8],
+	constants = [8, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -94,5 +94,7 @@ function
 		load_global	1
 		call	0
 		pop
+		load_const	1
+		return
 	]
 }

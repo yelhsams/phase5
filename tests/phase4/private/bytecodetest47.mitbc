@@ -42,7 +42,7 @@ function
 			]
 		}
 	],
-	constants = [3, "This should be printed.", false, "This should not be printed.", 0, 1],
+	constants = [3, "This should be printed.", false, "This should not be printed.", 0, 1, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -65,11 +65,12 @@ function
 		load_const	0
 		eq
 		not
-		if	5
+		if	6
 		load_global	1
 		load_const	1
 		call	1
 		pop
+		goto	1
 		load_const	2
 		not
 		if	6
@@ -77,11 +78,13 @@ function
 		load_const	3
 		call	1
 		pop
-		goto	5
+		goto	6
 		load_global	1
 		load_const	1
 		call	1
 		pop
+		goto	1
+		goto	1
 		load_global	0
 		load_const	4
 		gt
@@ -96,5 +99,7 @@ function
 		sub
 		store_global	0
 		goto	-13
+		load_const	6
+		return
 	]
 }

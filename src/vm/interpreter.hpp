@@ -4,15 +4,14 @@
 #include "bytecode/types.hpp"
 #include "gc/gc.hpp"
 #include <algorithm>
+#include <cstdint>
 #include <exception>
 #include <iostream>
 #include <map>
 #include <set>
 #include <string>
-#include <vector>
 #include <unordered_map>
-#include <cstdint>
-
+#include <vector>
 
 namespace vm {
 
@@ -281,15 +280,12 @@ struct Frame {
   bytecode::Function *func;
   const std::vector<Value *> *free_refs;
 
-  Frame(size_t local_count,
-        bytecode::Function *f,
+  Frame(size_t local_count, bytecode::Function *f,
         const std::vector<Value *> *fr)
-    : locals(local_count, TaggedValue::none()),
-      pc(0),
-      func(f),
-      free_refs(fr) {
-        stack.reserve(256);
-      }
+      : locals(local_count, TaggedValue::none()), pc(0), func(f),
+        free_refs(fr) {
+    stack.reserve(256);
+  }
 };
 
 // Virtual Machine
@@ -308,11 +304,6 @@ private:
   // Allocation tracking for GC trigger
   size_t curr_heap_bytes = 0;
 
-  // Thresholds for generational GC
-  static constexpr size_t MINOR_GC_THRESHOLD = 64 * 1024;   // 64KB triggers minor GC
-  static constexpr size_t FULL_GC_THRESHOLD = 1024 * 1024;  // 1MB triggers full GC consideration
-  size_t bytes_since_last_gc = 0;
-
   // Singletons for commonly-used immutable values
   Value *none_singleton = nullptr;
   Value *bool_true_singleton = nullptr;
@@ -321,20 +312,10 @@ private:
   // Wrapper for heap allocation that triggers GC periodically
   template <typename T, typename... Args> T *allocate(Args &&...args) {
     curr_heap_bytes += sizeof(T);
-    bytes_since_last_gc += sizeof(T);
-
-    // Trigger minor GC frequently for young generation
-    if (bytes_since_last_gc >= MINOR_GC_THRESHOLD) {
-      maybe_gc();
-      bytes_since_last_gc = 0;
-    }
-
-    // Also check max heap limit
     if (curr_heap_bytes >= max_heap_bytes) {
-      force_full_gc();
-      curr_heap_bytes = heap.total_bytes();
+      maybe_gc();
+      curr_heap_bytes = 0;
     }
-
     return heap.allocate<T>(std::forward<Args>(args)...);
   }
 
@@ -353,6 +334,34 @@ private:
       frame.stack[frame.sp] = v;
     }
     frame.sp++;
+  }
+
+  // Inline type checking helpers
+  inline bool is_integer(const TaggedValue &tv) {
+    return tv.kind == TaggedValue::Kind::Integer ||
+           (tv.kind == TaggedValue::Kind::HeapPtr &&
+            tv.ptr->tag == Value::Type::Integer);
+  }
+  inline bool is_boolean(const TaggedValue &tv) {
+    return tv.kind == TaggedValue::Kind::Boolean ||
+           (tv.kind == TaggedValue::Kind::HeapPtr &&
+            tv.ptr->tag == Value::Type::Boolean);
+  }
+  inline bool is_string(const TaggedValue &tv) {
+    return tv.kind == TaggedValue::Kind::HeapPtr &&
+           tv.ptr->tag == Value::Type::String;
+  }
+  inline Record *as_record(const TaggedValue &tv) {
+    if (tv.kind == TaggedValue::Kind::HeapPtr &&
+        tv.ptr->tag == Value::Type::Record)
+      return static_cast<Record *>(tv.ptr);
+    throw IllegalCastException("Expected record");
+  }
+  inline Reference *as_reference(const TaggedValue &tv) {
+    if (tv.kind == TaggedValue::Kind::HeapPtr &&
+        tv.ptr->tag == Value::Type::Reference)
+      return static_cast<Reference *>(tv.ptr);
+    throw IllegalCastException("Expected reference");
   }
 
   int32_t get_int(Value *v) {
@@ -409,6 +418,18 @@ private:
     return "None";
   }
 
+  // Helper to extract index key from TaggedValue (int or string)
+  std::string extract_index_key(const TaggedValue &idx_tv) {
+    if (idx_tv.kind == TaggedValue::Kind::Integer) {
+      return std::to_string(idx_tv.i);
+    } else if (is_integer(idx_tv)) {
+      return std::to_string(get_int(idx_tv));
+    } else if (is_string(idx_tv)) {
+      return static_cast<String *>(idx_tv.ptr)->value;
+    }
+    throw IllegalCastException("Invalid index type");
+  }
+
   TaggedValue tagged_from_value(Value *v) {
     if (!v)
       return TaggedValue::none();
@@ -450,7 +471,8 @@ private:
       uint16_t max_used;
       uint16_t fresh() {
         uint16_t r = next++;
-        if (r > max_used) max_used = r;
+        if (r > max_used)
+          max_used = r;
         return r;
       }
     };
@@ -467,9 +489,11 @@ private:
     std::vector<bytecode::RegisterInstruction> out;
 
     auto ensure_reg_count = [&](uint16_t idx) {
-      if (idx > alloc.max_used) alloc.max_used = idx;
+      if (idx > alloc.max_used)
+        alloc.max_used = idx;
     };
-    ensure_reg_count(static_cast<uint16_t>(func->local_vars_.size() ? func->local_vars_.size() - 1 : 0));
+    ensure_reg_count(static_cast<uint16_t>(
+        func->local_vars_.size() ? func->local_vars_.size() - 1 : 0));
 
     for (size_t pc = 0; pc < func->instructions.size(); ++pc) {
       pc_to_out[pc] = out.size();
@@ -494,7 +518,8 @@ private:
         break;
       }
       case Operation::StoreLocal: {
-        uint16_t val = vstack.back(); vstack.pop_back();
+        uint16_t val = vstack.back();
+        vstack.pop_back();
         uint16_t dst = static_cast<uint16_t>(in.operand0.value());
         ensure_reg_count(dst);
         out.push_back({Operation::StoreLocal, dst, val, 0, 0});
@@ -509,8 +534,10 @@ private:
       case Operation::Eq:
       case Operation::And:
       case Operation::Or: {
-        uint16_t right = vstack.back(); vstack.pop_back();
-        uint16_t left = vstack.back(); vstack.pop_back();
+        uint16_t right = vstack.back();
+        vstack.pop_back();
+        uint16_t left = vstack.back();
+        vstack.pop_back();
         uint16_t dst = alloc.fresh();
         out.push_back({in.operation, dst, left, right, 0});
         vstack.push_back(dst);
@@ -518,7 +545,8 @@ private:
       }
       case Operation::Neg:
       case Operation::Not: {
-        uint16_t val = vstack.back(); vstack.pop_back();
+        uint16_t val = vstack.back();
+        vstack.pop_back();
         uint16_t dst = alloc.fresh();
         out.push_back({in.operation, dst, val, 0, 0});
         vstack.push_back(dst);
@@ -535,7 +563,8 @@ private:
         break;
       }
       case Operation::If: {
-        uint16_t cond = vstack.back(); vstack.pop_back();
+        uint16_t cond = vstack.back();
+        vstack.pop_back();
         int64_t target_pc = static_cast<int64_t>(pc) + in.operand0.value();
         if (target_pc < 0 ||
             target_pc > static_cast<int64_t>(func->instructions.size())) {
@@ -551,8 +580,10 @@ private:
         break;
       }
       case Operation::Swap: {
-        uint16_t a = vstack.back(); vstack.pop_back();
-        uint16_t b = vstack.back(); vstack.pop_back();
+        uint16_t a = vstack.back();
+        vstack.pop_back();
+        uint16_t b = vstack.back();
+        vstack.pop_back();
         vstack.push_back(a);
         vstack.push_back(b);
         break;
@@ -570,7 +601,8 @@ private:
           vstack.pop_back();
         }
         std::reverse(args.begin(), args.end());
-        uint16_t callee = vstack.back(); vstack.pop_back();
+        uint16_t callee = vstack.back();
+        vstack.pop_back();
         uint16_t arg_start = alloc.fresh();
         uint16_t first_arg = arg_start;
         // ensure contiguous
@@ -578,9 +610,7 @@ private:
           ensure_reg_count(static_cast<uint16_t>(arg_start + arg_count - 1));
           for (int i = 0; i < arg_count; ++i) {
             out.push_back({Operation::StoreLocal,
-                           static_cast<uint16_t>(arg_start + i),
-                           args[i],
-                           0,
+                           static_cast<uint16_t>(arg_start + i), args[i], 0,
                            0});
           }
         }
@@ -590,7 +620,8 @@ private:
         break;
       }
       case Operation::Return: {
-        uint16_t ret = vstack.back(); vstack.pop_back();
+        uint16_t ret = vstack.back();
+        vstack.pop_back();
         out.push_back({Operation::Return, 0, ret, 0, 0});
         break;
       }
@@ -601,26 +632,31 @@ private:
         break;
       }
       case Operation::StoreGlobal: {
-        uint16_t val = vstack.back(); vstack.pop_back();
+        uint16_t val = vstack.back();
+        vstack.pop_back();
         out.push_back({Operation::StoreGlobal, 0, val, 0, in.operand0.value()});
         break;
       }
       case Operation::PushReference: {
         uint16_t dst = alloc.fresh();
-        out.push_back({Operation::PushReference, dst, 0, 0, in.operand0.value()});
+        out.push_back(
+            {Operation::PushReference, dst, 0, 0, in.operand0.value()});
         vstack.push_back(dst);
         break;
       }
       case Operation::LoadReference: {
-        uint16_t ref = vstack.back(); vstack.pop_back();
+        uint16_t ref = vstack.back();
+        vstack.pop_back();
         uint16_t dst = alloc.fresh();
         out.push_back({Operation::LoadReference, dst, ref, 0, 0});
         vstack.push_back(dst);
         break;
       }
       case Operation::StoreReference: {
-        uint16_t val = vstack.back(); vstack.pop_back();
-        uint16_t ref = vstack.back(); vstack.pop_back();
+        uint16_t val = vstack.back();
+        vstack.pop_back();
+        uint16_t ref = vstack.back();
+        vstack.pop_back();
         out.push_back({Operation::StoreReference, 0, val, ref, 0});
         break;
       }
@@ -631,30 +667,39 @@ private:
         break;
       }
       case Operation::FieldLoad: {
-        uint16_t rec = vstack.back(); vstack.pop_back();
+        uint16_t rec = vstack.back();
+        vstack.pop_back();
         uint16_t dst = alloc.fresh();
         out.push_back({Operation::FieldLoad, dst, rec, 0, in.operand0.value()});
         vstack.push_back(dst);
         break;
       }
       case Operation::FieldStore: {
-        uint16_t val = vstack.back(); vstack.pop_back();
-        uint16_t rec = vstack.back(); vstack.pop_back();
-        out.push_back({Operation::FieldStore, 0, val, rec, in.operand0.value()});
+        uint16_t val = vstack.back();
+        vstack.pop_back();
+        uint16_t rec = vstack.back();
+        vstack.pop_back();
+        out.push_back(
+            {Operation::FieldStore, 0, val, rec, in.operand0.value()});
         break;
       }
       case Operation::IndexLoad: {
-        uint16_t idx = vstack.back(); vstack.pop_back();
-        uint16_t rec = vstack.back(); vstack.pop_back();
+        uint16_t idx = vstack.back();
+        vstack.pop_back();
+        uint16_t rec = vstack.back();
+        vstack.pop_back();
         uint16_t dst = alloc.fresh();
         out.push_back({Operation::IndexLoad, dst, rec, idx, 0});
         vstack.push_back(dst);
         break;
       }
       case Operation::IndexStore: {
-        uint16_t val = vstack.back(); vstack.pop_back();
-        uint16_t idx = vstack.back(); vstack.pop_back();
-        uint16_t rec = vstack.back(); vstack.pop_back();
+        uint16_t val = vstack.back();
+        vstack.pop_back();
+        uint16_t idx = vstack.back();
+        vstack.pop_back();
+        uint16_t rec = vstack.back();
+        vstack.pop_back();
         out.push_back({Operation::IndexStore, rec, val, idx, 0});
         break;
       }
@@ -667,21 +712,20 @@ private:
           vstack.pop_back();
         }
         std::reverse(refs.begin(), refs.end());
-        uint16_t func_reg = vstack.back(); vstack.pop_back();
+        uint16_t func_reg = vstack.back();
+        vstack.pop_back();
 
         uint16_t base = alloc.fresh();
         if (free_count > 0) {
           ensure_reg_count(static_cast<uint16_t>(base + free_count - 1));
           for (int i = 0; i < free_count; ++i) {
             out.push_back({Operation::StoreLocal,
-                           static_cast<uint16_t>(base + i),
-                           refs[i],
-                           0,
-                           0});
+                           static_cast<uint16_t>(base + i), refs[i], 0, 0});
           }
         }
         uint16_t dst = alloc.fresh();
-        out.push_back({Operation::AllocClosure, dst, base, func_reg, free_count});
+        out.push_back(
+            {Operation::AllocClosure, dst, base, func_reg, free_count});
         vstack.push_back(dst);
         break;
       }
@@ -723,10 +767,11 @@ private:
       frame.locals[i] = args[i];
     }
 
-    // References for local_reference_vars: assume register index matches local_vars_ order
+    // References for local_reference_vars: assume register index matches
+    // local_vars_ order
     for (const auto &var_name : func->local_reference_vars_) {
-      auto it_ref =
-          std::find(func->local_vars_.begin(), func->local_vars_.end(), var_name);
+      auto it_ref = std::find(func->local_vars_.begin(),
+                              func->local_vars_.end(), var_name);
       if (it_ref != func->local_vars_.end()) {
         size_t var_idx = std::distance(func->local_vars_.begin(), it_ref);
         TaggedValue initial_val = frame.locals[var_idx];
@@ -754,39 +799,39 @@ private:
     std::vector<Value *> temp_refs_local;
 
     static void *dispatch_table[] = {
-        &&op_LoadConstR,    // LoadConst
-        &&op_LoadFuncR,     // LoadFunc
-        &&op_LoadLocalR,    // LoadLocal (used as move)
-        &&op_StoreLocalR,   // StoreLocal (used as move)
-        &&op_LoadGlobalR,   // LoadGlobal
-        &&op_StoreGlobalR,  // StoreGlobal
-        &&op_PushReferenceR,// PushReference
-        &&op_LoadReferenceR,// LoadReference
-        &&op_StoreReferenceR,// StoreReference
-        &&op_AllocRecordR,  // AllocRecord
-        &&op_FieldLoadR,    // FieldLoad
-        &&op_FieldStoreR,   // FieldStore
-        &&op_IndexLoadR,    // IndexLoad
-        &&op_IndexStoreR,   // IndexStore
-        &&op_AllocClosureR, // AllocClosure
-        &&op_CallR,         // Call
-        &&op_ReturnR,       // Return
-        &&op_AddR,          // Add
-        &&op_SubR,          // Sub
-        &&op_MulR,          // Mul
-        &&op_DivR,          // Div
-        &&op_NegR,          // Neg
-        &&op_GtR,           // Gt
-        &&op_GeqR,          // Geq
-        &&op_EqR,           // Eq
-        &&op_AndR,          // And
-        &&op_OrR,           // Or
-        &&op_NotR,          // Not
-        &&op_GotoR,         // Goto
-        &&op_IfR,           // If
-        &&op_DupR,          // Dup (unused)
-        &&op_SwapR,         // Swap (unused)
-        &&op_PopR           // Pop (unused)
+        &&op_LoadConstR,      // LoadConst
+        &&op_LoadFuncR,       // LoadFunc
+        &&op_LoadLocalR,      // LoadLocal (used as move)
+        &&op_StoreLocalR,     // StoreLocal (used as move)
+        &&op_LoadGlobalR,     // LoadGlobal
+        &&op_StoreGlobalR,    // StoreGlobal
+        &&op_PushReferenceR,  // PushReference
+        &&op_LoadReferenceR,  // LoadReference
+        &&op_StoreReferenceR, // StoreReference
+        &&op_AllocRecordR,    // AllocRecord
+        &&op_FieldLoadR,      // FieldLoad
+        &&op_FieldStoreR,     // FieldStore
+        &&op_IndexLoadR,      // IndexLoad
+        &&op_IndexStoreR,     // IndexStore
+        &&op_AllocClosureR,   // AllocClosure
+        &&op_CallR,           // Call
+        &&op_ReturnR,         // Return
+        &&op_AddR,            // Add
+        &&op_SubR,            // Sub
+        &&op_MulR,            // Mul
+        &&op_DivR,            // Div
+        &&op_NegR,            // Neg
+        &&op_GtR,             // Gt
+        &&op_GeqR,            // Geq
+        &&op_EqR,             // Eq
+        &&op_AndR,            // And
+        &&op_OrR,             // Or
+        &&op_NotR,            // Not
+        &&op_GotoR,           // Goto
+        &&op_IfR,             // If
+        &&op_DupR,            // Dup (unused)
+        &&op_SwapR,           // Swap (unused)
+        &&op_PopR             // Pop (unused)
     };
 
 #define DISPATCH_REG() goto *dispatch_table[static_cast<int>(ip->op)]
@@ -803,7 +848,8 @@ private:
     }
     frame.locals[dst] = constant_to_tagged(func->constants_[cidx]);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -816,7 +862,8 @@ private:
     auto f = func->functions_[findex];
     frame.locals[dst] = TaggedValue::from_heap(allocate<Function>(f));
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -824,7 +871,8 @@ private:
     TaggedValue v = frame.locals[ip->src1];
     frame.locals[ip->dst] = v;
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -833,7 +881,8 @@ private:
     uint16_t dst = ip->dst;
     if (frame.ref_locals.find(dst) != frame.ref_locals.end()) {
       if (dst >= func->local_vars_.size()) {
-        throw RuntimeException("StoreLocal: local variable name index out of range");
+        throw RuntimeException(
+            "StoreLocal: local variable name index out of range");
       }
       const std::string &var_name = func->local_vars_[dst];
       auto ref_it = frame.local_refs.find(var_name);
@@ -845,7 +894,8 @@ private:
     }
     frame.locals[dst] = val;
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -861,7 +911,8 @@ private:
     }
     frame.locals[ip->dst] = it_g->second;
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -873,7 +924,8 @@ private:
     const std::string &name = func->names_[idx];
     globals[name] = frame.locals[ip->src1];
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -885,124 +937,89 @@ private:
       ref = frame.local_refs[var_name];
     } else {
       int32_t free_idx = idx - func->local_reference_vars_.size();
-      if (free_idx < 0 ||
-          free_idx >= static_cast<int32_t>(free_refs.size())) {
-        throw RuntimeException("PushReference: free variable index out of range");
+      if (free_idx < 0 || free_idx >= static_cast<int32_t>(free_refs.size())) {
+        throw RuntimeException(
+            "PushReference: free variable index out of range");
       }
       ref = free_refs[free_idx];
     }
     frame.locals[ip->dst] = TaggedValue::from_heap(ref);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_LoadReferenceR: {
-    TaggedValue ref_tv = frame.locals[ip->src1];
-    if (ref_tv.kind != TaggedValue::Kind::HeapPtr ||
-        ref_tv.ptr->tag != Value::Type::Reference)
-      throw IllegalCastException("Expected reference");
-    auto ref = static_cast<Reference *>(ref_tv.ptr);
+    auto ref = as_reference(frame.locals[ip->src1]);
     frame.locals[ip->dst] = tagged_from_value(ref->cell);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_StoreReferenceR: {
-    TaggedValue val_tv = frame.locals[ip->src1];
-    TaggedValue ref_tv = frame.locals[ip->src2];
-    if (ref_tv.kind != TaggedValue::Kind::HeapPtr ||
-        ref_tv.ptr->tag != Value::Type::Reference)
-      throw IllegalCastException("Expected reference");
-    auto ref = static_cast<Reference *>(ref_tv.ptr);
-    ref->cell = box_tagged(val_tv);
+    auto ref = as_reference(frame.locals[ip->src2]);
+    ref->cell = box_tagged(frame.locals[ip->src1]);
     heap.write_barrier(ref, ref->cell);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_AllocRecordR: {
     frame.locals[ip->dst] = TaggedValue::from_heap(allocate<Record>());
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_FieldLoadR: {
-    TaggedValue rec_tv = frame.locals[ip->src1];
-    if (rec_tv.kind != TaggedValue::Kind::HeapPtr ||
-        rec_tv.ptr->tag != Value::Type::Record)
-      throw IllegalCastException("Expected record");
-    auto rec = static_cast<Record *>(rec_tv.ptr);
+    auto rec = as_record(frame.locals[ip->src1]);
     size_t idx = static_cast<size_t>(ip->imm);
     if (idx >= func->names_.size()) {
       throw RuntimeException("FieldLoad: name index out of range");
     }
-    const std::string &field = func->names_[idx];
-    auto it = rec->fields.find(field);
-    if (it == rec->fields.end()) {
-      frame.locals[ip->dst] = TaggedValue::none();
-    } else {
-      frame.locals[ip->dst] = tagged_from_value(it->second);
-    }
+    auto it = rec->fields.find(func->names_[idx]);
+    frame.locals[ip->dst] = (it != rec->fields.end())
+                                ? tagged_from_value(it->second)
+                                : TaggedValue::none();
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_FieldStoreR: {
-    TaggedValue val_tv = frame.locals[ip->src1];
-    TaggedValue rec_tv = frame.locals[ip->src2];
-    if (rec_tv.kind != TaggedValue::Kind::HeapPtr ||
-        rec_tv.ptr->tag != Value::Type::Record)
-      throw IllegalCastException("Expected record");
-    auto rec = static_cast<Record *>(rec_tv.ptr);
+    auto rec = as_record(frame.locals[ip->src2]);
     size_t idx = static_cast<size_t>(ip->imm);
     if (idx >= func->names_.size()) {
       throw RuntimeException("FieldStore: name index out of range");
     }
-    const std::string &field = func->names_[idx];
-    Value *boxed = box_tagged(val_tv);
-    rec->fields[field] = boxed;
+    Value *boxed = box_tagged(frame.locals[ip->src1]);
+    rec->fields[func->names_[idx]] = boxed;
     heap.write_barrier(rec, boxed);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_IndexLoadR: {
     TaggedValue rec_tv = frame.locals[ip->src1];
     TaggedValue idx_tv = frame.locals[ip->src2];
-    if (rec_tv.kind != TaggedValue::Kind::HeapPtr ||
-        rec_tv.ptr->tag != Value::Type::Record)
-      throw IllegalCastException("Expected record");
-    auto rec = static_cast<Record *>(rec_tv.ptr);
-
-    TaggedValue result = TaggedValue::none();
-    if (idx_tv.kind == TaggedValue::Kind::Integer ||
-        (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-         idx_tv.ptr->tag == Value::Type::Integer)) {
-      auto idx = idx_tv.kind == TaggedValue::Kind::Integer
-                     ? idx_tv.i
-                     : static_cast<Integer *>(idx_tv.ptr)->value;
-      std::string key = std::to_string(idx);
-      auto it = rec->fields.find(key);
-      if (it != rec->fields.end())
-        result = tagged_from_value(it->second);
-    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-               idx_tv.ptr->tag == Value::Type::String) {
-      const std::string &key = static_cast<String *>(idx_tv.ptr)->value;
-      auto it = rec->fields.find(key);
-      if (it != rec->fields.end())
-        result = tagged_from_value(it->second);
-    } else {
-      throw IllegalCastException("Invalid index type");
-    }
-    frame.locals[ip->dst] = result;
+    auto rec = as_record(rec_tv);
+    std::string key = extract_index_key(idx_tv);
+    auto it = rec->fields.find(key);
+    frame.locals[ip->dst] = (it != rec->fields.end())
+                                ? tagged_from_value(it->second)
+                                : TaggedValue::none();
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1010,28 +1027,14 @@ private:
     TaggedValue val_tv = frame.locals[ip->src1];
     TaggedValue idx_tv = frame.locals[ip->src2];
     TaggedValue rec_tv = frame.locals[ip->dst];
-    if (rec_tv.kind != TaggedValue::Kind::HeapPtr ||
-        rec_tv.ptr->tag != Value::Type::Record)
-      throw IllegalCastException("Expected record");
-    auto rec = static_cast<Record *>(rec_tv.ptr);
+    auto rec = as_record(rec_tv);
+    std::string key = extract_index_key(idx_tv);
     Value *boxed = box_tagged(val_tv);
-
-    if (idx_tv.kind == TaggedValue::Kind::Integer ||
-        (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-         idx_tv.ptr->tag == Value::Type::Integer)) {
-      auto idx = idx_tv.kind == TaggedValue::Kind::Integer
-                     ? idx_tv.i
-                     : static_cast<Integer *>(idx_tv.ptr)->value;
-      rec->fields[std::to_string(idx)] = boxed;
-    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-               idx_tv.ptr->tag == Value::Type::String) {
-      rec->fields[static_cast<String *>(idx_tv.ptr)->value] = boxed;
-    } else {
-      throw IllegalCastException("Invalid index type");
-    }
+    rec->fields[key] = boxed;
     heap.write_barrier(rec, boxed);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1057,149 +1060,116 @@ private:
     }
     frame.locals[ip->dst] = TaggedValue::from_heap(closure_val);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_AddR: {
     TaggedValue left = frame.locals[ip->src1];
     TaggedValue right = frame.locals[ip->src2];
-
-    auto is_string = [](const TaggedValue &tv) {
-      return tv.kind == TaggedValue::Kind::HeapPtr &&
-             tv.ptr->tag == Value::Type::String;
-    };
-
-    if ((left.kind == TaggedValue::Kind::Integer ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Integer)) &&
-        (right.kind == TaggedValue::Kind::Integer ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Integer))) {
-      auto li = get_int(left);
-      auto ri = get_int(right);
-      frame.locals[ip->dst] = TaggedValue::from_int(li + ri);
+    if (is_integer(left) && is_integer(right)) {
+      frame.locals[ip->dst] =
+          TaggedValue::from_int(get_int(left) + get_int(right));
     } else if (is_string(left) || is_string(right)) {
       frame.locals[ip->dst] = TaggedValue::from_heap(
           allocate<String>(tagged_to_string(left) + tagged_to_string(right)));
     } else {
       throw IllegalCastException("Invalid operand types for add");
     }
-
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_SubR: {
     TaggedValue left = frame.locals[ip->src1];
     TaggedValue right = frame.locals[ip->src2];
-    if ((left.kind == TaggedValue::Kind::Integer ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Integer)) &&
-        (right.kind == TaggedValue::Kind::Integer ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Integer))) {
-      auto li = get_int(left);
-      auto ri = get_int(right);
-      frame.locals[ip->dst] = TaggedValue::from_int(li - ri);
+    if (is_integer(left) && is_integer(right)) {
+      frame.locals[ip->dst] =
+          TaggedValue::from_int(get_int(left) - get_int(right));
     } else {
       throw IllegalCastException("Invalid operand types for subtract");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_MulR: {
     TaggedValue left = frame.locals[ip->src1];
     TaggedValue right = frame.locals[ip->src2];
-    if ((left.kind == TaggedValue::Kind::Integer ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Integer)) &&
-        (right.kind == TaggedValue::Kind::Integer ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Integer))) {
-      auto li = get_int(left);
-      auto ri = get_int(right);
-      frame.locals[ip->dst] = TaggedValue::from_int(li * ri);
+    if (is_integer(left) && is_integer(right)) {
+      frame.locals[ip->dst] =
+          TaggedValue::from_int(get_int(left) * get_int(right));
     } else {
       throw IllegalCastException("Invalid operand types for multiply");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_DivR: {
     TaggedValue left = frame.locals[ip->src1];
     TaggedValue right = frame.locals[ip->src2];
-    if ((left.kind == TaggedValue::Kind::Integer ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Integer)) &&
-        (right.kind == TaggedValue::Kind::Integer ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Integer))) {
-      auto li = get_int(left);
-      auto ri = get_int(right);
-      if (ri == 0) throw IllegalArithmeticException("Division by zero");
-      frame.locals[ip->dst] = TaggedValue::from_int(li / ri);
+    if (is_integer(left) && is_integer(right)) {
+      int32_t ri = get_int(right);
+      if (ri == 0)
+        throw IllegalArithmeticException("Division by zero");
+      frame.locals[ip->dst] = TaggedValue::from_int(get_int(left) / ri);
     } else {
       throw IllegalCastException("Invalid operand types for divide");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_NegR: {
     TaggedValue left = frame.locals[ip->src1];
-    if (left.kind == TaggedValue::Kind::Integer ||
-        (left.kind == TaggedValue::Kind::HeapPtr &&
-         left.ptr->tag == Value::Type::Integer)) {
-      auto li = get_int(left);
-      frame.locals[ip->dst] = TaggedValue::from_int(-li);
+    if (is_integer(left)) {
+      frame.locals[ip->dst] = TaggedValue::from_int(-get_int(left));
     } else {
       throw IllegalCastException("Invalid operand types for negate");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_GtR: {
     TaggedValue left = frame.locals[ip->src1];
     TaggedValue right = frame.locals[ip->src2];
-    if ((left.kind == TaggedValue::Kind::Integer ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Integer)) &&
-        (right.kind == TaggedValue::Kind::Integer ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Integer))) {
-      frame.locals[ip->dst] = TaggedValue::from_bool(get_int(left) > get_int(right));
+    if (is_integer(left) && is_integer(right)) {
+      frame.locals[ip->dst] =
+          TaggedValue::from_bool(get_int(left) > get_int(right));
     } else {
       throw IllegalCastException("Invalid operand types for greater than");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_GeqR: {
     TaggedValue left = frame.locals[ip->src1];
     TaggedValue right = frame.locals[ip->src2];
-    if ((left.kind == TaggedValue::Kind::Integer ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Integer)) &&
-        (right.kind == TaggedValue::Kind::Integer ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Integer))) {
-      frame.locals[ip->dst] = TaggedValue::from_bool(get_int(left) >= get_int(right));
+    if (is_integer(left) && is_integer(right)) {
+      frame.locals[ip->dst] =
+          TaggedValue::from_bool(get_int(left) >= get_int(right));
     } else {
       throw IllegalCastException("Invalid operand types for greater or equal");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1208,57 +1178,51 @@ private:
     TaggedValue right = frame.locals[ip->src2];
     frame.locals[ip->dst] = TaggedValue::from_bool(values_equal(left, right));
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_AndR: {
     TaggedValue left = frame.locals[ip->src1];
     TaggedValue right = frame.locals[ip->src2];
-    if ((left.kind == TaggedValue::Kind::Boolean ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Boolean)) &&
-        (right.kind == TaggedValue::Kind::Boolean ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Boolean))) {
-      frame.locals[ip->dst] = TaggedValue::from_bool(get_bool(left) && get_bool(right));
+    if (is_boolean(left) && is_boolean(right)) {
+      frame.locals[ip->dst] =
+          TaggedValue::from_bool(get_bool(left) && get_bool(right));
     } else {
       throw IllegalCastException("Invalid operand types for and");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_OrR: {
     TaggedValue left = frame.locals[ip->src1];
     TaggedValue right = frame.locals[ip->src2];
-    if ((left.kind == TaggedValue::Kind::Boolean ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Boolean)) &&
-        (right.kind == TaggedValue::Kind::Boolean ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Boolean))) {
-      frame.locals[ip->dst] = TaggedValue::from_bool(get_bool(left) || get_bool(right));
+    if (is_boolean(left) && is_boolean(right)) {
+      frame.locals[ip->dst] =
+          TaggedValue::from_bool(get_bool(left) || get_bool(right));
     } else {
       throw IllegalCastException("Invalid operand types for or");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_NotR: {
     TaggedValue val = frame.locals[ip->src1];
-    if (val.kind == TaggedValue::Kind::Boolean ||
-        (val.kind == TaggedValue::Kind::HeapPtr &&
-         val.ptr->tag == Value::Type::Boolean)) {
+    if (is_boolean(val)) {
       frame.locals[ip->dst] = TaggedValue::from_bool(!get_bool(val));
     } else {
       throw IllegalCastException("Invalid operand types for not");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1272,16 +1236,11 @@ private:
 
   op_IfR: {
     TaggedValue cond = frame.locals[ip->src1];
-    if (cond.kind != TaggedValue::Kind::Boolean &&
-        !(cond.kind == TaggedValue::Kind::HeapPtr &&
-          cond.ptr->tag == Value::Type::Boolean))
+    if (!is_boolean(cond))
       throw IllegalCastException("Invalid operand types for if");
-    if (get_bool(cond)) {
-      ip += ip->imm;
-    } else {
-      ++ip;
-    }
-    if (ip == end) goto function_epilogue_reg;
+    ip = get_bool(cond) ? ip + ip->imm : ip + 1;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1305,7 +1264,8 @@ private:
     TaggedValue result;
     if (callee->tag == Value::Type::Closure) {
       auto closure = static_cast<Closure *>(callee);
-      result = execute_function(closure->function, temp_args_local, closure->free_var_refs);
+      result = execute_function(closure->function, temp_args_local,
+                                closure->free_var_refs);
     } else if (callee->tag == Value::Type::Function) {
       auto func_ptr_local = static_cast<Function *>(callee);
       result = execute_function(func_ptr_local->func, temp_args_local, {});
@@ -1315,28 +1275,32 @@ private:
     frame.locals[dst] = result;
 
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_DupR: {
     frame.locals[ip->dst] = frame.locals[ip->src1];
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_SwapR: {
     std::swap(frame.locals[ip->dst], frame.locals[ip->src1]);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_PopR: {
     frame.locals[ip->dst] = TaggedValue::none();
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1407,15 +1371,13 @@ private:
     throw UninitializedVariableException("Unknown native function");
   }
 
-  void print_value(Value *v) {
-    std::cout << v->toString();
-  }
-  void print_value(const TaggedValue &tv) {
-    std::cout << tagged_to_string(tv);
-  }
+  void print_value(Value *v) { std::cout << v->toString(); }
+  void print_value(const TaggedValue &tv) { std::cout << tagged_to_string(tv); }
 
-  // Collect root set for GC
-  void collect_roots(std::vector<Collectable *>& roots) {
+  void maybe_gc() {
+    // Collect root set: globals + all stack frames' locals + all operand stacks
+    std::vector<Collectable *> roots;
+
     // Add globals
     for (auto &[name, val] : globals) {
       if (val.kind == TaggedValue::Kind::HeapPtr && val.ptr)
@@ -1429,9 +1391,12 @@ private:
     }
 
     // Add singletons as roots
-    if (none_singleton) roots.push_back(none_singleton);
-    if (bool_true_singleton) roots.push_back(bool_true_singleton);
-    if (bool_false_singleton) roots.push_back(bool_false_singleton);
+    if (none_singleton)
+      roots.push_back(none_singleton);
+    if (bool_true_singleton)
+      roots.push_back(bool_true_singleton);
+    if (bool_false_singleton)
+      roots.push_back(bool_false_singleton);
 
     // Add all locals from all frames in call stack
     for (Frame *frame : call_stack) {
@@ -1453,34 +1418,15 @@ private:
           roots.push_back(ref);
       }
     }
-  }
 
-  // Run adaptive GC (prefers minor GC for better performance)
-  void maybe_gc() {
-    std::vector<Collectable *> roots;
-    collect_roots(roots);
-
-    // Use adaptive GC policy from heap (prefers minor GC)
+    // Run GC
     heap.gc(roots.begin(), roots.end());
   }
 
-  // Force a full GC when we hit memory limits
-  void force_full_gc() {
-    std::vector<Collectable *> roots;
-    collect_roots(roots);
-
-    // Always run full GC when forced
-    heap.full_gc(roots.begin(), roots.end());
-  }
-
   // helper function for optimization execute_function
-  bool stack_empty(const Frame &frame) const {
-    return frame.sp == 0;
-  }
+  bool stack_empty(const Frame &frame) const { return frame.sp == 0; }
 
-  size_t stack_size(const Frame &frame) const {
-    return frame.sp;
-  }
+  size_t stack_size(const Frame &frame) const { return frame.sp; }
 
   TaggedValue stack_peek(Frame &frame) {
     if (frame.sp == 0)
@@ -1489,8 +1435,8 @@ private:
   }
 
   TaggedValue execute_function(bytecode::Function *func,
-                          const std::vector<TaggedValue> &args,
-                          const std::vector<Value *> &free_refs) {
+                               const std::vector<TaggedValue> &args,
+                               const std::vector<Value *> &free_refs) {
     if (!func->reg_instructions.empty()) {
       return execute_function_reg(func, args, free_refs);
     }
@@ -1514,8 +1460,8 @@ private:
 
     // Create references for local_reference_vars
     for (const auto &var_name : func->local_reference_vars_) {
-      auto it_ref = std::find(func->local_vars_.begin(), func->local_vars_.end(),
-                          var_name);
+      auto it_ref = std::find(func->local_vars_.begin(),
+                              func->local_vars_.end(), var_name);
       if (it_ref != func->local_vars_.end()) {
         size_t var_idx = std::distance(func->local_vars_.begin(), it_ref);
 
@@ -1561,41 +1507,39 @@ private:
     const bytecode::Instruction *end = ip + instructions.size();
 
     // GCC/Clang extension: labels-as-values for computed goto dispatch
-    static void *dispatch_table[] = {
-      &&op_LoadConst,
-      &&op_LoadFunc,
-      &&op_LoadLocal,
-      &&op_StoreLocal,
-      &&op_LoadGlobal,
-      &&op_StoreGlobal,
-      &&op_PushReference,
-      &&op_LoadReference,
-      &&op_StoreReference,
-      &&op_AllocRecord,
-      &&op_FieldLoad,
-      &&op_FieldStore,
-      &&op_IndexLoad,
-      &&op_IndexStore,
-      &&op_AllocClosure,
-      &&op_Call,
-      &&op_Return,
-      &&op_Add,
-      &&op_Sub,
-      &&op_Mul,
-      &&op_Div,
-      &&op_Neg,
-      &&op_Gt,
-      &&op_Geq,
-      &&op_Eq,
-      &&op_And,
-      &&op_Or,
-      &&op_Not,
-      &&op_Goto,
-      &&op_If,
-      &&op_Dup,
-      &&op_Swap,
-      &&op_Pop
-    };
+    static void *dispatch_table[] = {&&op_LoadConst,
+                                     &&op_LoadFunc,
+                                     &&op_LoadLocal,
+                                     &&op_StoreLocal,
+                                     &&op_LoadGlobal,
+                                     &&op_StoreGlobal,
+                                     &&op_PushReference,
+                                     &&op_LoadReference,
+                                     &&op_StoreReference,
+                                     &&op_AllocRecord,
+                                     &&op_FieldLoad,
+                                     &&op_FieldStore,
+                                     &&op_IndexLoad,
+                                     &&op_IndexStore,
+                                     &&op_AllocClosure,
+                                     &&op_Call,
+                                     &&op_Return,
+                                     &&op_Add,
+                                     &&op_Sub,
+                                     &&op_Mul,
+                                     &&op_Div,
+                                     &&op_Neg,
+                                     &&op_Gt,
+                                     &&op_Geq,
+                                     &&op_Eq,
+                                     &&op_And,
+                                     &&op_Or,
+                                     &&op_Not,
+                                     &&op_Goto,
+                                     &&op_If,
+                                     &&op_Dup,
+                                     &&op_Swap,
+                                     &&op_Pop};
 
 #define DISPATCH() goto *dispatch_table[static_cast<int>(ip->operation)]
 
@@ -1610,7 +1554,8 @@ private:
     push(frame, v);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1623,7 +1568,8 @@ private:
     push(frame, TaggedValue::from_heap(allocate<Function>(f)));
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1636,7 +1582,8 @@ private:
     push(frame, local);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1664,7 +1611,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1681,7 +1629,8 @@ private:
     push(frame, global_it->second);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1695,7 +1644,8 @@ private:
     globals[name] = v;
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1718,35 +1668,28 @@ private:
     push(frame, TaggedValue::from_heap(ref));
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
   op_LoadReference: {
-    TaggedValue ref_val = pop(frame);
-    if (ref_val.kind != TaggedValue::Kind::HeapPtr ||
-        ref_val.ptr->tag != Value::Type::Reference)
-      throw IllegalCastException("Expected reference");
-    auto ref = static_cast<Reference *>(ref_val.ptr);
+    auto ref = as_reference(pop(frame));
     push(frame, tagged_from_value(ref->cell));
-
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
   op_StoreReference: {
     TaggedValue val = pop(frame);
-    TaggedValue ref_val = pop(frame);
-    if (ref_val.kind != TaggedValue::Kind::HeapPtr ||
-        ref_val.ptr->tag != Value::Type::Reference)
-      throw IllegalCastException("Expected reference");
-    auto ref = static_cast<Reference *>(ref_val.ptr);
+    auto ref = as_reference(pop(frame));
     ref->cell = box_tagged(val);
     heap.write_barrier(ref, ref->cell);
-
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1754,116 +1697,65 @@ private:
     push(frame, TaggedValue::from_heap(allocate<Record>()));
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
 
   op_FieldLoad: {
-    TaggedValue rec_val = pop(frame);
-    if (rec_val.kind != TaggedValue::Kind::HeapPtr ||
-        rec_val.ptr->tag != Value::Type::Record)
-      throw IllegalCastException("Expected record");
-    auto rec = static_cast<Record *>(rec_val.ptr);
+    auto rec = as_record(pop(frame));
     size_t idx = ip->operand0.value();
     if (idx >= func_ptr->names_.size()) {
       throw RuntimeException("FieldLoad: name index out of range");
     }
-    const std::string &field = func_ptr->names_[idx];
-    auto field_it = rec->fields.find(field);
-    if (field_it == rec->fields.end()) {
-      push(frame, TaggedValue::none());
-    } else {
-      push(frame, tagged_from_value(field_it->second));
-    }
-
+    auto it = rec->fields.find(func_ptr->names_[idx]);
+    push(frame, (it != rec->fields.end()) ? tagged_from_value(it->second)
+                                          : TaggedValue::none());
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
   op_FieldStore: {
     TaggedValue val = pop(frame);
-    TaggedValue rec_val = pop(frame);
-    if (rec_val.kind != TaggedValue::Kind::HeapPtr ||
-        rec_val.ptr->tag != Value::Type::Record)
-      throw IllegalCastException("Expected record");
-    auto rec = static_cast<Record *>(rec_val.ptr);
+    auto rec = as_record(pop(frame));
     size_t idx = ip->operand0.value();
     if (idx >= func_ptr->names_.size()) {
       throw RuntimeException("FieldStore: name index out of range");
     }
-    const std::string &field = func_ptr->names_[idx];
     Value *boxed = box_tagged(val);
-    rec->fields[field] = boxed;
+    rec->fields[func_ptr->names_[idx]] = boxed;
     heap.write_barrier(rec, boxed);
-
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
   op_IndexLoad: {
     TaggedValue idx_val = pop(frame);
-    TaggedValue rec_val = pop(frame);
-    if (rec_val.kind != TaggedValue::Kind::HeapPtr ||
-        rec_val.ptr->tag != Value::Type::Record)
-      throw IllegalCastException("Expected record");
-    auto rec = static_cast<Record *>(rec_val.ptr);
-
-    if (idx_val.kind == TaggedValue::Kind::Integer ||
-        (idx_val.kind == TaggedValue::Kind::HeapPtr &&
-         idx_val.ptr->tag == Value::Type::Integer)) {
-      auto idx = idx_val.kind == TaggedValue::Kind::Integer
-                     ? idx_val.i
-                     : static_cast<Integer *>(idx_val.ptr)->value;
-      std::string key = std::to_string(idx);
-      auto it_idx = rec->fields.find(key);
-      push(frame, it_idx != rec->fields.end()
-                        ? tagged_from_value(it_idx->second)
-                        : TaggedValue::none());
-    } else if (idx_val.kind == TaggedValue::Kind::HeapPtr &&
-               idx_val.ptr->tag == Value::Type::String) {
-      const std::string &key = static_cast<String *>(idx_val.ptr)->value;
-      auto it_idx = rec->fields.find(key);
-      push(frame, it_idx != rec->fields.end()
-                        ? tagged_from_value(it_idx->second)
-                        : TaggedValue::none());
-    } else {
-      throw IllegalCastException("Invalid index type");
-    }
-
+    auto rec = as_record(pop(frame));
+    std::string key = extract_index_key(idx_val);
+    auto it = rec->fields.find(key);
+    push(frame, (it != rec->fields.end()) ? tagged_from_value(it->second)
+                                          : TaggedValue::none());
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
   op_IndexStore: {
     TaggedValue val = pop(frame);
     TaggedValue idx_val = pop(frame);
-    TaggedValue rec_val = pop(frame);
-    if (rec_val.kind != TaggedValue::Kind::HeapPtr ||
-        rec_val.ptr->tag != Value::Type::Record)
-      throw IllegalCastException("Expected record");
-    auto rec = static_cast<Record *>(rec_val.ptr);
-
+    auto rec = as_record(pop(frame));
+    std::string key = extract_index_key(idx_val);
     Value *boxed = box_tagged(val);
-
-    if (idx_val.kind == TaggedValue::Kind::Integer ||
-        (idx_val.kind == TaggedValue::Kind::HeapPtr &&
-         idx_val.ptr->tag == Value::Type::Integer)) {
-      auto idx = idx_val.kind == TaggedValue::Kind::Integer
-                     ? idx_val.i
-                     : static_cast<Integer *>(idx_val.ptr)->value;
-      rec->fields[std::to_string(idx)] = boxed;
-    } else if (idx_val.kind == TaggedValue::Kind::HeapPtr &&
-               idx_val.ptr->tag == Value::Type::String) {
-      rec->fields[static_cast<String *>(idx_val.ptr)->value] = boxed;
-    } else {
-      throw IllegalCastException("Invalid index type");
-    }
+    rec->fields[key] = boxed;
     heap.write_barrier(rec, boxed);
-
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1901,7 +1793,8 @@ private:
     push(frame, TaggedValue::from_heap(closure_val));
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1918,8 +1811,8 @@ private:
     if (closure_val.kind == TaggedValue::Kind::HeapPtr &&
         closure_val.ptr->tag == Value::Type::Closure) {
       auto closure = static_cast<Closure *>(closure_val.ptr);
-      push(frame,
-           execute_function(closure->function, temp_args, closure->free_var_refs));
+      push(frame, execute_function(closure->function, temp_args,
+                                   closure->free_var_refs));
     } else if (closure_val.kind == TaggedValue::Kind::HeapPtr &&
                closure_val.ptr->tag == Value::Type::Function) {
       auto func_ptr_local = static_cast<Function *>(closure_val.ptr);
@@ -1929,7 +1822,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1946,154 +1840,104 @@ private:
   op_Add: {
     TaggedValue right = pop(frame);
     TaggedValue left = pop(frame);
-
-    auto is_string = [](const TaggedValue &tv) {
-      return tv.kind == TaggedValue::Kind::HeapPtr &&
-             tv.ptr->tag == Value::Type::String;
-    };
-
-    if ((left.kind == TaggedValue::Kind::Integer ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Integer)) &&
-        (right.kind == TaggedValue::Kind::Integer ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Integer))) {
-      auto li = get_int(left);
-      auto ri = get_int(right);
-      push(frame, TaggedValue::from_int(li + ri));
+    if (is_integer(left) && is_integer(right)) {
+      push(frame, TaggedValue::from_int(get_int(left) + get_int(right)));
     } else if (is_string(left) || is_string(right)) {
-      push(frame, TaggedValue::from_heap(
-                      allocate<String>(tagged_to_string(left) + tagged_to_string(right))));
+      push(frame, TaggedValue::from_heap(allocate<String>(
+                      tagged_to_string(left) + tagged_to_string(right))));
     } else {
       throw IllegalCastException("Invalid operand types for add");
     }
-
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
   op_Sub: {
     TaggedValue right = pop(frame);
     TaggedValue left = pop(frame);
-    if ((left.kind == TaggedValue::Kind::Integer ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Integer)) &&
-        (right.kind == TaggedValue::Kind::Integer ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Integer))) {
-      auto li = get_int(left);
-      auto ri = get_int(right);
-      push(frame, TaggedValue::from_int(li - ri));
+    if (is_integer(left) && is_integer(right)) {
+      push(frame, TaggedValue::from_int(get_int(left) - get_int(right)));
     } else {
       throw IllegalCastException("Invalid operand types for subtract");
     }
-
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
   op_Mul: {
     TaggedValue right = pop(frame);
     TaggedValue left = pop(frame);
-    if ((left.kind == TaggedValue::Kind::Integer ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Integer)) &&
-        (right.kind == TaggedValue::Kind::Integer ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Integer))) {
-      auto li = get_int(left);
-      auto ri = get_int(right);
-      push(frame, TaggedValue::from_int(li * ri));
+    if (is_integer(left) && is_integer(right)) {
+      push(frame, TaggedValue::from_int(get_int(left) * get_int(right)));
     } else {
       throw IllegalCastException("Invalid operand types for multiply");
     }
-
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
   op_Div: {
     TaggedValue right = pop(frame);
     TaggedValue left = pop(frame);
-    if ((left.kind == TaggedValue::Kind::Integer ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Integer)) &&
-        (right.kind == TaggedValue::Kind::Integer ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Integer))) {
-      auto li = get_int(left);
-      auto ri = get_int(right);
+    if (is_integer(left) && is_integer(right)) {
+      int32_t ri = get_int(right);
       if (ri == 0)
         throw IllegalArithmeticException("Division by zero");
-      push(frame, TaggedValue::from_int(li / ri));
+      push(frame, TaggedValue::from_int(get_int(left) / ri));
     } else {
       throw IllegalCastException("Invalid operand types for divide");
     }
-
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
   op_Neg: {
     TaggedValue left = pop(frame);
-    if (left.kind == TaggedValue::Kind::Integer ||
-        (left.kind == TaggedValue::Kind::HeapPtr &&
-         left.ptr->tag == Value::Type::Integer)) {
-      auto li = get_int(left);
-      push(frame, TaggedValue::from_int(-li));
+    if (is_integer(left)) {
+      push(frame, TaggedValue::from_int(-get_int(left)));
     } else {
       throw IllegalCastException("Invalid operand types for negate");
     }
-
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
   op_Gt: {
     TaggedValue right = pop(frame);
     TaggedValue left = pop(frame);
-    if ((left.kind == TaggedValue::Kind::Integer ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Integer)) &&
-        (right.kind == TaggedValue::Kind::Integer ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Integer))) {
-      auto li = get_int(left);
-      auto ri = get_int(right);
-      push(frame, TaggedValue::from_bool(li > ri));
+    if (is_integer(left) && is_integer(right)) {
+      push(frame, TaggedValue::from_bool(get_int(left) > get_int(right)));
     } else {
       throw IllegalCastException("Invalid operand types for greater than");
     }
-
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
   op_Geq: {
     TaggedValue right = pop(frame);
     TaggedValue left = pop(frame);
-    if ((left.kind == TaggedValue::Kind::Integer ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Integer)) &&
-        (right.kind == TaggedValue::Kind::Integer ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Integer))) {
-      auto li = get_int(left);
-      auto ri = get_int(right);
-      push(frame, TaggedValue::from_bool(li >= ri));
+    if (is_integer(left) && is_integer(right)) {
+      push(frame, TaggedValue::from_bool(get_int(left) >= get_int(right)));
     } else {
       throw IllegalCastException(
           "Invalid operand types for greater than or equal");
     }
-
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2103,65 +1947,49 @@ private:
     push(frame, TaggedValue::from_bool(values_equal(left, right)));
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
   op_And: {
     TaggedValue right = pop(frame);
     TaggedValue left = pop(frame);
-    if ((left.kind == TaggedValue::Kind::Boolean ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Boolean)) &&
-        (right.kind == TaggedValue::Kind::Boolean ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Boolean))) {
-      auto lb = get_bool(left);
-      auto rb = get_bool(right);
-      push(frame, TaggedValue::from_bool(lb && rb));
+    if (is_boolean(left) && is_boolean(right)) {
+      push(frame, TaggedValue::from_bool(get_bool(left) && get_bool(right)));
     } else {
       throw IllegalCastException("Invalid operand types for and");
     }
-
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
   op_Or: {
     TaggedValue right = pop(frame);
     TaggedValue left = pop(frame);
-    if ((left.kind == TaggedValue::Kind::Boolean ||
-         (left.kind == TaggedValue::Kind::HeapPtr &&
-          left.ptr->tag == Value::Type::Boolean)) &&
-        (right.kind == TaggedValue::Kind::Boolean ||
-         (right.kind == TaggedValue::Kind::HeapPtr &&
-          right.ptr->tag == Value::Type::Boolean))) {
-      auto lb = get_bool(left);
-      auto rb = get_bool(right);
-      push(frame, TaggedValue::from_bool(lb || rb));
+    if (is_boolean(left) && is_boolean(right)) {
+      push(frame, TaggedValue::from_bool(get_bool(left) || get_bool(right)));
     } else {
       throw IllegalCastException("Invalid operand types for or");
     }
-
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
   op_Not: {
     TaggedValue left = pop(frame);
-    if (left.kind == TaggedValue::Kind::Boolean ||
-        (left.kind == TaggedValue::Kind::HeapPtr &&
-         left.ptr->tag == Value::Type::Boolean)) {
-      auto lb = get_bool(left);
-      push(frame, TaggedValue::from_bool(!lb));
+    if (is_boolean(left)) {
+      push(frame, TaggedValue::from_bool(!get_bool(left)));
     } else {
       throw IllegalCastException("Invalid operand types for not");
     }
-
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2176,18 +2004,11 @@ private:
 
   op_If: {
     TaggedValue cond = pop(frame);
-    if (cond.kind != TaggedValue::Kind::Boolean &&
-        !(cond.kind == TaggedValue::Kind::HeapPtr &&
-          cond.ptr->tag == Value::Type::Boolean))
+    if (!is_boolean(cond))
       throw IllegalCastException("Invalid operand types for if");
-
-    if (get_bool(cond)) {
-      int32_t offset = ip->operand0.value();
-      ip += offset;
-    } else {
-      ++ip;
-    }
-    if (ip == end) goto function_epilogue;
+    ip = get_bool(cond) ? ip + ip->operand0.value() : ip + 1;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2197,7 +2018,8 @@ private:
     push(frame, v);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2208,7 +2030,8 @@ private:
     push(frame, b);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2216,7 +2039,8 @@ private:
     pop(frame);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
 
   function_epilogue:
@@ -2238,7 +2062,6 @@ private:
 
 #undef DISPATCH
   }
-
 
   bool values_equal(const TaggedValue &left, const TaggedValue &right) {
     auto is_none = [](const TaggedValue &tv) {
@@ -2296,7 +2119,6 @@ public:
     none_singleton = heap.allocate<None>();
     bool_true_singleton = heap.allocate<Boolean>(true);
     bool_false_singleton = heap.allocate<Boolean>(false);
-
   }
 
   void run(bytecode::Function *main_func) {

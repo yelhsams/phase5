@@ -42,12 +42,12 @@ function
 			]
 		}
 	],
-	constants = ["123097698132", 1234, true, false, "fjbierj"],
+	constants = ["123097698132", 1234, true, false, "fjbierj", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [a, b, c, d, e, f, __asdf123480g, none, print, input, intcast],
+	names = [a, b, c, none, d, e, f, __asdf123480g, print, input, intcast],
 	instructions = 
 	[
 		load_func	0
@@ -63,16 +63,18 @@ function
 		store_global	0
 		load_const	1
 		store_global	1
-		load_global	7
+		load_global	3
 		store_global	2
 		load_const	2
-		store_global	3
-		load_const	3
 		store_global	4
+		load_const	3
+		store_global	5
 		load_const	1
 		neg
-		store_global	5
-		load_const	4
 		store_global	6
+		load_const	4
+		store_global	7
+		load_const	5
+		return
 	]
 }

@@ -57,7 +57,7 @@ function
 							local_vars = [v],
 							local_ref_vars = [],
 							free_vars = [x],
-							names = [print],
+							names = [print, x],
 							instructions = 
 							[
 								load_global	0
@@ -76,55 +76,45 @@ function
 							]
 						}
 					],
-					constants = [None, 3, 2],
+					constants = [3, 2],
 					parameter_count = 1,
-					local_vars = [u, x, boo],
-					local_ref_vars = [x],
+					local_vars = [u, boo, x],
+					local_ref_vars = [x, boo],
 					free_vars = [],
 					names = [],
 					instructions = 
 					[
 						load_const	0
-						store_local	1
-						load_const	0
 						store_local	2
-						load_const	1
-						store_local	1
 						load_func	0
 						push_ref	0
 						alloc_closure	1
+						store_local	1
+						load_local	1
+						load_const	0
+						call	1
+						pop
+						load_const	1
 						store_local	2
-						load_local	2
+						load_local	1
 						load_const	1
 						call	1
 						pop
-						load_const	2
-						store_local	1
-						load_local	2
-						load_const	2
-						call	1
-						pop
-						load_local	2
+						load_local	1
 						return
 					]
 				}
 			],
-			constants = [None, 4, 2, "this x should be ", " is ", 0],
+			constants = [4, 2, "this x should be ", " is ", 0, None],
 			parameter_count = 1,
-			local_vars = [t, moo, f, bad],
-			local_ref_vars = [],
+			local_vars = [t, f, moo, bad],
+			local_ref_vars = [moo, f, bad],
 			free_vars = [],
 			names = [x, print],
 			instructions = 
 			[
-				load_const	0
-				store_local	1
-				load_const	0
-				store_local	2
-				load_const	0
-				store_local	3
 				load_local	0
-				load_const	1
+				load_const	0
 				gt
 				not
 				if	25
@@ -132,36 +122,37 @@ function
 				store_global	0
 				load_func	0
 				alloc_closure	0
-				store_local	1
-				load_local	1
-				load_const	2
-				call	1
 				store_local	2
 				load_local	2
-				load_const	2
+				load_const	1
+				call	1
+				store_local	1
+				load_local	1
+				load_const	1
 				call	1
 				pop
 				load_global	1
-				load_const	3
+				load_const	2
 				load_local	0
 				add
-				load_const	4
+				load_const	3
 				add
 				load_global	0
 				add
 				call	1
 				pop
-				goto	5
-				load_const	1
-				load_const	5
+				goto	6
+				load_const	0
+				load_const	4
 				div
 				store_local	3
-				load_const	0
+				goto	1
+				load_const	5
 				return
 			]
 		}
 	],
-	constants = [5, 15],
+	constants = [5, 15, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -187,5 +178,7 @@ function
 		load_const	1
 		call	1
 		pop
+		load_const	2
+		return
 	]
 }

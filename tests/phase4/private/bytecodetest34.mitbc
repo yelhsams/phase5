@@ -47,7 +47,7 @@ function
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [account, _id, index, guid, isActive, balance, picture, age, eyeColor, relatives, name, first, last, company, email, phone, address, about, registered, latitude, longitude, tags, _0, _1, _2, _3, _4, range, _5, _6, _7, _8, _9, friends, greeting, favoriteFruit, print, input, intcast],
+	names = [account, _id, index, guid, isActive, balance, picture, age, eyeColor, relatives, first, last, name, company, email, phone, address, about, registered, latitude, longitude, _0, _1, _2, _3, _4, tags, _5, _6, _7, _8, _9, range, friends, greeting, favoriteFruit, print, input, intcast],
 	instructions = 
 	[
 		load_func	0
@@ -61,156 +61,158 @@ function
 		store_global	38
 		alloc_record
 		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
 		load_const	0
 		field_store	1
+		dup
 		load_const	1
 		field_store	2
+		dup
 		load_const	2
 		field_store	3
+		dup
 		load_const	3
 		field_store	4
+		dup
 		load_const	4
 		field_store	5
+		dup
 		load_const	5
 		field_store	6
+		dup
 		load_const	6
 		field_store	7
+		dup
 		load_const	7
 		field_store	8
+		dup
 		load_const	8
 		field_store	9
-		alloc_record
 		dup
+		alloc_record
 		dup
 		load_const	9
-		field_store	11
-		load_const	10
-		field_store	12
 		field_store	10
+		dup
+		load_const	10
+		field_store	11
+		field_store	12
+		dup
 		load_const	11
 		field_store	13
+		dup
 		load_const	12
 		field_store	14
+		dup
 		load_const	13
 		field_store	15
+		dup
 		load_const	14
 		field_store	16
+		dup
 		load_const	15
 		field_store	17
+		dup
 		load_const	16
 		field_store	18
+		dup
 		load_const	17
 		field_store	19
+		dup
 		load_const	18
 		field_store	20
+		dup
 		alloc_record
-		dup
-		dup
-		dup
-		dup
 		dup
 		load_const	19
-		field_store	22
-		load_const	20
-		field_store	23
-		load_const	21
-		field_store	24
-		load_const	22
-		field_store	25
-		load_const	23
-		field_store	26
 		field_store	21
+		dup
+		load_const	20
+		field_store	22
+		dup
+		load_const	21
+		field_store	23
+		dup
+		load_const	22
+		field_store	24
+		dup
+		load_const	23
+		field_store	25
+		field_store	26
+		dup
 		alloc_record
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
-		dup
 		dup
 		load_const	1
-		field_store	22
+		field_store	21
+		dup
 		load_const	24
-		field_store	23
+		field_store	22
+		dup
 		load_const	25
-		field_store	24
+		field_store	23
+		dup
 		load_const	26
-		field_store	25
+		field_store	24
+		dup
 		load_const	27
-		field_store	26
+		field_store	25
+		dup
 		load_const	28
-		field_store	28
-		load_const	29
-		field_store	29
-		load_const	30
-		field_store	30
-		load_const	31
-		field_store	31
-		load_const	32
-		field_store	32
 		field_store	27
+		dup
+		load_const	29
+		field_store	28
+		dup
+		load_const	30
+		field_store	29
+		dup
+		load_const	31
+		field_store	30
+		dup
+		load_const	32
+		field_store	31
+		field_store	32
+		dup
 		alloc_record
-		dup
-		dup
 		dup
 		alloc_record
 		dup
 		load_const	33
-		field_store	10
-		field_store	22
+		field_store	12
+		field_store	21
+		dup
 		alloc_record
 		dup
 		load_const	34
-		field_store	10
-		field_store	23
+		field_store	12
+		field_store	22
+		dup
 		alloc_record
 		dup
 		load_const	35
-		field_store	10
-		field_store	24
+		field_store	12
+		field_store	23
 		field_store	33
+		dup
 		load_const	36
 		field_store	34
+		dup
 		load_const	37
 		field_store	35
 		store_global	0
 		load_global	36
 		load_global	0
+		field_load	12
 		field_load	10
-		field_load	11
 		load_const	38
 		add
 		load_global	0
 		field_load	33
-		field_load	22
-		field_load	10
+		field_load	21
+		field_load	12
 		add
 		call	1
 		pop
+		load_const	8
+		return
 	]
 }

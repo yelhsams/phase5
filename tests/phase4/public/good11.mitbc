@@ -53,12 +53,12 @@ function
 					local_vars = [name],
 					local_ref_vars = [],
 					free_vars = [private],
-					names = [balances],
+					names = [private, balances],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
-						field_load	0
+						field_load	1
 						load_local	0
 						load_const	0
 						index_store
@@ -74,31 +74,32 @@ function
 					local_vars = [name],
 					local_ref_vars = [],
 					free_vars = [private, this],
-					names = [balances, addClient],
+					names = [private, balances, this, addClient],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
-						field_load	0
+						field_load	1
 						load_local	0
 						index_load
 						load_const	0
 						eq
 						not
-						if	7
+						if	8
 						push_ref	1
 						load_ref
-						field_load	1
+						field_load	3
 						load_local	0
 						call	1
 						pop
+						goto	1
 						push_ref	0
 						load_ref
-						field_load	0
+						field_load	1
 						load_local	0
 						push_ref	0
 						load_ref
-						field_load	0
+						field_load	1
 						load_local	0
 						index_load
 						load_const	1
@@ -116,7 +117,7 @@ function
 					local_vars = [name],
 					local_ref_vars = [],
 					free_vars = [private],
-					names = [print, balances],
+					names = [print, private, balances],
 					instructions = 
 					[
 						load_global	0
@@ -127,7 +128,7 @@ function
 						add
 						push_ref	0
 						load_ref
-						field_load	1
+						field_load	2
 						load_local	0
 						index_load
 						add
@@ -140,7 +141,7 @@ function
 			],
 			constants = [],
 			parameter_count = 0,
-			local_vars = [private, this],
+			local_vars = [this, private],
 			local_ref_vars = [private, this],
 			free_vars = [],
 			names = [balances, addClient, increment, print],
@@ -150,31 +151,31 @@ function
 				dup
 				alloc_record
 				field_store	0
-				store_local	0
+				store_local	1
 				alloc_record
-				dup
-				dup
 				dup
 				load_func	0
 				push_ref	0
 				alloc_closure	1
 				field_store	1
+				dup
 				load_func	1
 				push_ref	0
 				push_ref	1
 				alloc_closure	2
 				field_store	2
+				dup
 				load_func	2
 				push_ref	0
 				alloc_closure	1
 				field_store	3
-				store_local	1
-				load_local	1
+				store_local	0
+				load_local	0
 				return
 			]
 		}
 	],
-	constants = ["Armando", "Michael"],
+	constants = ["Armando", "Michael", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -227,5 +228,7 @@ function
 		load_const	1
 		call	1
 		pop
+		load_const	2
+		return
 	]
 }

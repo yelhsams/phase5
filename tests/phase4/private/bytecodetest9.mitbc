@@ -127,58 +127,53 @@ function
 		function
 		{
 			functions = [],
-			constants = [None, 5, 17, 1],
+			constants = [5, 17, 1],
 			parameter_count = 1,
-			local_vars = [end, x, c, y],
-			local_ref_vars = [],
+			local_vars = [end, c, y, x],
+			local_ref_vars = [x, c, y],
 			free_vars = [],
 			names = [print],
 			instructions = 
 			[
 				load_const	0
-				store_local	1
-				load_const	0
-				store_local	2
-				load_const	0
 				store_local	3
 				load_const	1
 				store_local	1
-				load_const	2
-				store_local	2
-				load_local	1
-				load_local	2
-				add
-				store_local	3
 				load_local	3
+				load_local	1
+				add
+				store_local	2
+				goto	1
+				load_local	2
 				load_local	0
 				gt
 				not
 				if	10
 				load_global	0
-				load_local	3
+				load_local	2
 				call	1
 				pop
-				load_local	3
-				load_const	3
+				load_local	2
+				load_const	2
 				sub
-				store_local	3
+				store_local	2
 				goto	-13
-				load_local	3
+				load_local	2
 				return
 			]
 		}
 	],
-	constants = [4, 10, 5, 100, 50, "Function failed, ", " != ", "All is well :D", 7, 8, 15, 2, 27, "testGlobals", 20],
+	constants = [4, 10, 5, 100, 50, "Function failed, ", " != ", "All is well :D", 7, 8, 15, 2, 27, "testGlobals", 20, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [mathLib, doLoop, myEnd, result, x, plus, subtract, multiply, divide, subRec, testGlobals, print, input, intcast],
+	names = [mathLib, plus, subtract, multiply, divide, testGlobals, subRec, print, doLoop, myEnd, result, x, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	11
+		store_global	7
 		load_func	1
 		alloc_closure	0
 		store_global	12
@@ -187,48 +182,48 @@ function
 		store_global	13
 		alloc_record
 		dup
-		dup
-		dup
-		dup
-		dup
 		load_func	3
 		alloc_closure	0
-		field_store	5
+		field_store	1
+		dup
 		load_func	4
 		alloc_closure	0
-		field_store	6
+		field_store	2
+		dup
 		load_func	5
 		alloc_closure	0
-		field_store	7
+		field_store	3
+		dup
 		load_func	6
 		alloc_closure	0
-		field_store	8
+		field_store	4
+		dup
 		alloc_record
 		dup
 		load_func	7
 		alloc_closure	0
-		field_store	10
-		field_store	9
+		field_store	5
+		field_store	6
 		store_global	0
-		load_global	11
+		load_global	7
 		load_global	0
 		call	1
 		pop
 		load_func	8
 		alloc_closure	0
-		store_global	1
+		store_global	8
 		load_const	0
-		store_global	2
-		load_global	1
-		load_global	2
+		store_global	9
+		load_global	8
+		load_global	9
 		call	1
-		store_global	3
-		load_global	3
-		load_global	2
+		store_global	10
+		load_global	10
+		load_global	9
 		eq
 		not
 		load_global	0
-		field_load	8
+		field_load	4
 		load_const	1
 		load_const	2
 		call	2
@@ -238,7 +233,7 @@ function
 		eq
 		and
 		load_global	0
-		field_load	7
+		field_load	3
 		load_const	3
 		load_const	4
 		call	2
@@ -249,24 +244,25 @@ function
 		and
 		not
 		if	12
-		load_global	11
+		load_global	7
 		load_const	5
-		load_global	3
+		load_global	10
 		add
 		load_const	6
 		add
-		load_global	2
+		load_global	9
 		add
 		call	1
 		pop
-		goto	5
-		load_global	11
+		goto	6
+		load_global	7
 		load_const	7
 		call	1
 		pop
-		load_global	11
+		goto	1
+		load_global	7
 		load_global	0
-		field_load	5
+		field_load	1
 		load_const	8
 		load_const	9
 		call	2
@@ -274,9 +270,9 @@ function
 		eq
 		call	1
 		pop
-		load_global	11
+		load_global	7
 		load_global	0
-		field_load	6
+		field_load	2
 		load_const	11
 		load_const	8
 		call	2
@@ -286,14 +282,14 @@ function
 		call	1
 		pop
 		load_const	12
-		store_global	4
-		load_global	11
+		store_global	11
+		load_global	7
 		load_global	0
-		field_load	9
+		field_load	6
 		load_const	13
 		index_load
-		load_global	1
-		load_global	4
+		load_global	8
+		load_global	11
 		neg
 		load_const	14
 		sub
@@ -301,5 +297,7 @@ function
 		call	1
 		call	1
 		pop
+		load_const	15
+		return
 	]
 }

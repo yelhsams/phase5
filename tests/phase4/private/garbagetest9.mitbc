@@ -53,13 +53,13 @@ function
 					local_vars = [leftNode],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [left],
+					names = [this, left],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
 						load_local	0
-						field_store	0
+						field_store	1
 						load_const	0
 						return
 					]
@@ -72,13 +72,13 @@ function
 					local_vars = [rightNode],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [right],
+					names = [this, right],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
 						load_local	0
-						field_store	0
+						field_store	1
 						load_const	0
 						return
 					]
@@ -91,12 +91,12 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [left],
+					names = [this, left],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
-						field_load	0
+						field_load	1
 						return
 					]
 				},
@@ -108,12 +108,12 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [right],
+					names = [this, right],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
-						field_load	0
+						field_load	1
 						return
 					]
 				}
@@ -128,27 +128,27 @@ function
 			[
 				alloc_record
 				dup
-				dup
-				dup
-				dup
-				dup
-				dup
 				load_const	0
 				field_store	0
+				dup
 				load_const	0
 				field_store	1
+				dup
 				load_func	0
 				push_ref	0
 				alloc_closure	1
 				field_store	2
+				dup
 				load_func	1
 				push_ref	0
 				alloc_closure	1
 				field_store	3
+				dup
 				load_func	2
 				push_ref	0
 				alloc_closure	1
 				field_store	4
+				dup
 				load_func	3
 				push_ref	0
 				alloc_closure	1
@@ -161,10 +161,10 @@ function
 		function
 		{
 			functions = [],
-			constants = [0, 1, None],
+			constants = [0, 1],
 			parameter_count = 1,
 			local_vars = [depth, newNode],
-			local_ref_vars = [],
+			local_ref_vars = [newNode],
 			free_vars = [],
 			names = [Node, setLeft, maketree, setRight],
 			instructions = 
@@ -174,13 +174,12 @@ function
 				swap
 				geq
 				not
-				if	7
+				if	6
 				load_global	0
 				call	0
 				store_local	1
 				load_local	1
 				return
-				goto	24
 				load_global	0
 				call	0
 				store_local	1
@@ -204,8 +203,6 @@ function
 				pop
 				load_local	1
 				return
-				load_const	2
-				return
 			]
 		}
 	],
@@ -214,12 +211,12 @@ function
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [kStretchTreeDepth, Node, maketree, temp, print, input, intcast],
+	names = [kStretchTreeDepth, Node, maketree, print, temp, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	4
+		store_global	3
 		load_func	1
 		alloc_closure	0
 		store_global	5
@@ -234,11 +231,11 @@ function
 		load_func	4
 		alloc_closure	0
 		store_global	2
-		load_global	4
+		load_global	3
 		load_const	1
 		call	1
 		pop
-		load_global	4
+		load_global	3
 		load_const	2
 		load_global	0
 		add
@@ -247,8 +244,10 @@ function
 		load_global	2
 		load_global	0
 		call	1
-		store_global	3
+		store_global	4
 		load_const	3
-		store_global	3
+		store_global	4
+		load_const	3
+		return
 	]
 }

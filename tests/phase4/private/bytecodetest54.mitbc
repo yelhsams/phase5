@@ -42,7 +42,7 @@ function
 			]
 		}
 	],
-	constants = ["should be 10: ", 5, "should be -3: ", "should be 0: "],
+	constants = ["should be 10: ", 5, "should be -3: ", "should be 0: ", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -97,5 +97,7 @@ function
 		load_global	1
 		call	0
 		store_global	0
+		load_const	4
+		return
 	]
 }

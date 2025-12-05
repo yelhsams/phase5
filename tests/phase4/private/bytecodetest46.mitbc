@@ -42,7 +42,7 @@ function
 			]
 		}
 	],
-	constants = [1, 2, "just printed ", false, true],
+	constants = [1, 2, "just printed ", false, true, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -91,5 +91,7 @@ function
 		and
 		call	1
 		pop
+		load_const	5
+		return
 	]
 }

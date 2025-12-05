@@ -77,50 +77,48 @@ function
 													]
 												}
 											],
-											constants = [None, 1, false],
+											constants = [1, false],
 											parameter_count = 0,
 											local_vars = [foo6],
-											local_ref_vars = [],
+											local_ref_vars = [foo6],
 											free_vars = [],
 											names = [print, x],
 											instructions = 
 											[
-												load_const	0
-												store_local	0
 												load_global	0
 												load_global	1
-												load_const	1
+												load_const	0
 												add
 												call	1
 												pop
-												load_const	2
+												load_const	1
 												not
-												if	4
+												if	5
 												load_func	0
 												alloc_closure	0
 												store_local	0
+												goto	1
 												load_local	0
 												return
 											]
 										}
 									],
-									constants = [None, 9, false],
+									constants = [9, false],
 									parameter_count = 0,
 									local_vars = [foo5],
-									local_ref_vars = [],
+									local_ref_vars = [foo5],
 									free_vars = [],
-									names = [x, print],
+									names = [print, x],
 									instructions = 
 									[
-										load_const	0
-										store_local	0
-										load_global	1
 										load_global	0
+										load_global	1
 										call	1
 										pop
+										load_const	0
+										store_global	1
+										goto	1
 										load_const	1
-										store_global	0
-										load_const	2
 										not
 										if	2
 										goto	-3
@@ -132,16 +130,14 @@ function
 									]
 								}
 							],
-							constants = [None],
+							constants = [],
 							parameter_count = 1,
 							local_vars = [x, foo4],
-							local_ref_vars = [],
+							local_ref_vars = [foo4],
 							free_vars = [],
 							names = [print],
 							instructions = 
 							[
-								load_const	0
-								store_local	1
 								load_global	0
 								load_local	0
 								call	1
@@ -154,18 +150,16 @@ function
 							]
 						}
 					],
-					constants = [None],
+					constants = [],
 					parameter_count = 0,
 					local_vars = [foo3],
-					local_ref_vars = [],
+					local_ref_vars = [foo3],
 					free_vars = [x],
-					names = [print],
+					names = [print, x],
 					instructions = 
 					[
-						load_const	0
-						store_local	0
 						load_global	0
-						push_ref	0
+						push_ref	1
 						load_ref
 						call	1
 						pop
@@ -177,18 +171,14 @@ function
 					]
 				}
 			],
-			constants = [None, 3, 4],
+			constants = [3, 4],
 			parameter_count = 3,
-			local_vars = [a, s, df, x, foo2],
-			local_ref_vars = [x],
+			local_vars = [a, s, df, foo2, x],
+			local_ref_vars = [x, foo2],
 			free_vars = [],
 			names = [print],
 			instructions = 
 			[
-				load_const	0
-				store_local	3
-				load_const	0
-				store_local	4
 				load_global	0
 				load_local	0
 				call	1
@@ -202,71 +192,66 @@ function
 				call	1
 				pop
 				load_global	0
-				load_local	3
+				load_local	4
 				call	1
 				pop
-				load_const	1
-				store_local	3
+				load_const	0
+				store_local	4
 				load_global	0
-				load_local	3
+				load_local	4
 				call	1
 				pop
 				load_func	0
 				push_ref	0
 				alloc_closure	1
-				store_local	4
-				load_const	2
 				store_local	3
-				load_local	4
+				load_const	1
+				store_local	4
+				load_local	3
 				return
 			]
 		},
 		function
 		{
 			functions = [],
-			constants = [None, 3],
+			constants = [None],
 			parameter_count = 0,
 			local_vars = [x],
-			local_ref_vars = [],
+			local_ref_vars = [x],
 			free_vars = [],
 			names = [print],
 			instructions = 
 			[
-				load_const	0
-				store_local	0
 				load_global	0
 				load_local	0
 				call	1
 				pop
 				load_const	0
 				return
-				load_const	1
-				store_local	0
 			]
 		},
 		function
 		{
 			functions = [],
-			constants = [None, false, 3],
+			constants = [false, 3, None],
 			parameter_count = 0,
 			local_vars = [x],
-			local_ref_vars = [],
+			local_ref_vars = [x],
 			free_vars = [],
 			names = [print],
 			instructions = 
 			[
-				load_const	0
-				store_local	0
 				load_global	0
 				load_local	0
 				call	1
 				pop
-				load_const	1
+				load_const	0
 				not
-				if	3
-				load_const	2
+				if	4
+				load_const	1
 				store_local	0
-				load_const	0
+				goto	1
+				load_const	2
 				return
 			]
 		},
@@ -282,7 +267,7 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [x],
-					names = [print],
+					names = [print, x],
 					instructions = 
 					[
 						load_global	0
@@ -295,16 +280,14 @@ function
 					]
 				}
 			],
-			constants = [None],
+			constants = [],
 			parameter_count = 1,
 			local_vars = [x, newfun],
-			local_ref_vars = [x],
+			local_ref_vars = [x, newfun],
 			free_vars = [],
 			names = [oldfun, print],
 			instructions = 
 			[
-				load_const	0
-				store_local	1
 				load_func	0
 				push_ref	0
 				alloc_closure	1
@@ -349,12 +332,12 @@ function
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [x, foo, a, bar, oldfun, fgen, b, c, i, rec, newfun, print, input, intcast],
+	names = [x, foo, a, print, bar, oldfun, fgen, b, c, i, rec, newfun, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	11
+		store_global	3
 		load_func	1
 		alloc_closure	0
 		store_global	12
@@ -387,12 +370,12 @@ function
 		load_global	2
 		call	0
 		store_global	2
-		load_global	11
+		load_global	3
 		load_global	2
 		call	0
 		call	1
 		pop
-		load_global	11
+		load_global	3
 		load_global	2
 		load_global	1
 		eq
@@ -406,64 +389,65 @@ function
 		pop
 		load_func	4
 		alloc_closure	0
-		store_global	3
-		load_global	3
+		store_global	4
+		load_global	4
 		call	0
 		pop
 		load_func	5
 		alloc_closure	0
-		store_global	3
-		load_global	3
+		store_global	4
+		load_global	4
+		call	0
+		pop
+		load_global	4
 		call	0
 		pop
 		load_global	3
-		call	0
-		pop
-		load_global	11
 		load_const	4
 		call	1
 		pop
 		load_const	5
-		store_global	4
+		store_global	5
 		load_func	6
 		alloc_closure	0
-		store_global	5
-		load_global	5
+		store_global	6
+		load_global	6
 		load_const	6
 		call	1
 		store_global	2
-		load_global	5
+		load_global	6
 		load_const	6
-		call	1
-		store_global	6
-		load_global	5
-		load_const	6
-		call	1
-		pop
-		load_global	5
-		load_const	1
 		call	1
 		store_global	7
-		load_global	2
-		call	0
+		load_global	6
+		load_const	6
+		call	1
 		pop
 		load_global	6
+		load_const	1
+		call	1
+		store_global	8
+		load_global	2
 		call	0
 		pop
 		load_global	7
 		call	0
 		pop
-		load_global	11
+		load_global	8
+		call	0
+		pop
+		load_global	3
 		load_const	7
 		call	1
 		pop
 		load_const	5
-		store_global	4
+		store_global	5
 		load_const	6
-		store_global	8
-		alloc_record
 		store_global	9
-		load_global	8
+		alloc_record
+		store_global	10
+		goto	1
+		load_global	9
 		load_const	3
 		swap
 		gt
@@ -471,35 +455,37 @@ function
 		if	18
 		load_func	7
 		alloc_closure	0
-		store_global	10
-		load_global	10
+		store_global	11
+		load_global	11
 		call	0
 		pop
+		load_global	11
+		store_global	5
 		load_global	10
-		store_global	4
 		load_global	9
-		load_global	8
-		load_global	10
+		load_global	11
 		index_store
-		load_global	8
+		load_global	9
 		load_const	1
 		add
-		store_global	8
+		store_global	9
 		goto	-22
-		load_global	9
+		load_global	10
 		load_const	6
 		index_load
 		call	0
 		pop
-		load_global	9
+		load_global	10
 		load_const	1
 		index_load
 		call	0
 		pop
-		load_global	9
+		load_global	10
 		load_const	2
 		index_load
 		call	0
 		pop
+		load_const	5
+		return
 	]
 }

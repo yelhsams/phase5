@@ -57,7 +57,7 @@ function
 							local_vars = [v],
 							local_ref_vars = [],
 							free_vars = [x],
-							names = [print],
+							names = [print, x],
 							instructions = 
 							[
 								load_global	0
@@ -78,37 +78,37 @@ function
 					],
 					constants = [3, 2],
 					parameter_count = 1,
-					local_vars = [u, x, boo],
-					local_ref_vars = [x],
-					free_vars = [],
+					local_vars = [u, boo, x],
+					local_ref_vars = [x, boo],
+					free_vars = [x],
 					names = [],
 					instructions = 
 					[
 						load_const	0
-						store_local	1
+						store_local	2
 						load_func	0
 						push_ref	0
 						alloc_closure	1
-						store_local	2
-						load_local	2
+						store_local	1
+						load_local	1
 						load_const	0
 						call	1
 						pop
 						load_const	1
-						store_local	1
-						load_local	2
+						store_local	2
+						load_local	1
 						load_const	1
 						call	1
 						pop
-						load_local	2
+						load_local	1
 						return
 					]
 				}
 			],
 			constants = [4, 2, " this x should be ", " is ", None],
 			parameter_count = 1,
-			local_vars = [t, x, moo, f],
-			local_ref_vars = [],
+			local_vars = [t, f, moo, x],
+			local_ref_vars = [x, moo, f],
 			free_vars = [],
 			names = [print],
 			instructions = 
@@ -117,17 +117,18 @@ function
 				load_const	0
 				gt
 				not
-				if	25
+				if	26
 				load_local	0
-				store_local	1
+				store_local	3
 				load_func	0
-				alloc_closure	0
+				push_ref	0
+				alloc_closure	1
 				store_local	2
 				load_local	2
 				load_const	1
 				call	1
-				store_local	3
-				load_local	3
+				store_local	1
+				load_local	1
 				load_const	1
 				call	1
 				pop
@@ -137,17 +138,18 @@ function
 				add
 				load_const	3
 				add
-				load_local	1
+				load_local	3
 				add
 				call	1
 				pop
+				goto	2
 				goto	1
 				load_const	4
 				return
 			]
 		}
 	],
-	constants = [5],
+	constants = [5, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -173,5 +175,7 @@ function
 		load_const	0
 		call	1
 		pop
+		load_const	1
+		return
 	]
 }

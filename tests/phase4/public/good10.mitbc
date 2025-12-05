@@ -53,20 +53,21 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [],
-					names = [x, print],
+					names = [print, x],
 					instructions = 
 					[
-						load_global	1
-						load_const	0
 						load_global	0
+						load_const	0
+						load_global	1
 						add
 						call	1
 						pop
-						load_global	0
+						load_global	1
 						load_const	1
 						eq
 						not
-						if	1
+						if	2
+						goto	1
 						load_const	2
 						return
 					]
@@ -74,23 +75,23 @@ function
 			],
 			constants = [7],
 			parameter_count = 0,
-			local_vars = [x, g],
-			local_ref_vars = [],
+			local_vars = [g, x],
+			local_ref_vars = [x, g],
 			free_vars = [],
 			names = [],
 			instructions = 
 			[
 				load_const	0
-				store_local	0
+				store_local	1
 				load_func	0
 				alloc_closure	0
-				store_local	1
-				load_local	1
+				store_local	0
+				load_local	0
 				return
 			]
 		}
 	],
-	constants = [5],
+	constants = [5, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -118,5 +119,7 @@ function
 		load_global	2
 		call	0
 		pop
+		load_const	1
+		return
 	]
 }

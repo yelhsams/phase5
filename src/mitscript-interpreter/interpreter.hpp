@@ -1,7 +1,8 @@
+#pragma once
+
 #include "./ast.hpp"
 
-namespace mitscript
-{
-    void interpret(AST &node);
+namespace mitscript {
+void interpret(AST &node);
 
 }

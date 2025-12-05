@@ -94,12 +94,12 @@ function
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [thingsILike, str, cat, eating, doinghw, drawing, wo, print, input, intcast],
+	names = [thingsILike, eating, doinghw, drawing, wo, print, str, cat, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	7
+		store_global	5
 		load_func	1
 		alloc_closure	0
 		store_global	8
@@ -108,65 +108,65 @@ function
 		store_global	9
 		alloc_record
 		dup
+		load_const	0
+		field_store	1
 		dup
-		dup
+		load_const	1
+		neg
+		field_store	2
 		dup
 		load_const	0
 		field_store	3
-		load_const	1
-		neg
-		field_store	4
-		load_const	0
-		field_store	5
+		dup
 		load_func	3
 		alloc_closure	0
-		field_store	6
+		field_store	4
 		store_global	0
-		load_global	7
+		load_global	5
 		load_global	0
-		field_load	6
+		field_load	4
 		call	0
 		call	1
 		pop
 		load_global	0
 		load_func	4
 		alloc_closure	0
-		field_store	6
-		load_global	7
+		field_store	4
+		load_global	5
 		load_global	0
-		field_load	6
+		field_load	4
 		load_const	2
 		call	1
 		call	1
 		pop
 		load_const	3
-		store_global	1
+		store_global	6
 		load_global	0
-		load_global	1
+		load_global	6
 		load_func	5
 		alloc_closure	0
 		index_store
-		load_global	7
+		load_global	5
 		load_global	0
-		field_load	6
+		field_load	4
 		load_const	4
 		call	1
 		call	1
 		pop
-		load_global	7
+		load_global	5
 		load_global	0
-		load_global	1
+		load_global	6
 		index_load
 		load_const	4
 		call	1
 		call	1
 		pop
-		load_global	7
+		load_global	5
 		load_global	0
-		load_global	1
+		load_global	6
 		index_load
 		load_global	0
-		field_load	6
+		field_load	4
 		load_const	4
 		call	1
 		call	1
@@ -174,33 +174,36 @@ function
 		pop
 		load_global	0
 		alloc_record
-		field_store	6
-		load_global	7
+		field_store	4
+		load_global	5
 		load_global	0
-		field_load	6
+		field_load	4
 		call	1
 		pop
 		load_global	0
-		field_load	6
-		store_global	2
-		load_global	2
+		field_load	4
+		store_global	7
+		load_global	7
 		load_global	0
-		field_load	6
+		field_load	4
 		eq
 		not
 		if	6
-		load_global	7
+		load_global	5
 		load_const	5
 		call	1
 		pop
+		goto	2
 		goto	1
 		load_global	0
 		load_const	6
-		field_store	6
-		load_global	7
+		field_store	4
+		load_global	5
 		load_global	0
-		field_load	6
+		field_load	4
 		call	1
 		pop
+		load_const	4
+		return
 	]
 }

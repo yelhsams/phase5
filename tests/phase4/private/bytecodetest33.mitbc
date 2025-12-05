@@ -81,10 +81,11 @@ function
 				load_local	0
 				call	1
 				pop
-				goto	4
+				goto	5
 				load_global	1
 				call	0
 				pop
+				goto	1
 				load_const	0
 				return
 			]
@@ -135,7 +136,7 @@ function
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [print_a, print_or_a, print_astonished, lut, print_lut, hello, how_many, to_get_to, print, input, intcast],
+	names = [print_a, print_or_a, print_astonished, lut, hello, how_many, to_get_to, print_lut, print, input, intcast],
 	instructions = 
 	[
 		load_func	0
@@ -158,18 +159,18 @@ function
 		store_global	2
 		alloc_record
 		dup
-		dup
-		dup
 		load_const	0
-		field_store	5
+		field_store	4
+		dup
 		load_const	1
-		field_store	6
+		field_store	5
+		dup
 		load_const	2
-		field_store	7
+		field_store	6
 		store_global	3
 		load_func	6
 		alloc_closure	0
-		store_global	4
+		store_global	7
 		load_global	0
 		call	0
 		pop
@@ -184,9 +185,11 @@ function
 		load_const	4
 		call	1
 		pop
-		load_global	4
+		load_global	7
 		load_const	5
 		call	1
 		pop
+		load_const	4
+		return
 	]
 }

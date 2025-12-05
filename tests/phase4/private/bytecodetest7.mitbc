@@ -112,7 +112,7 @@ function
 					local_vars = [x],
 					local_ref_vars = [],
 					free_vars = [oldprint],
-					names = [],
+					names = [oldprint],
 					instructions = 
 					[
 						push_ref	0
@@ -127,69 +127,63 @@ function
 					]
 				}
 			],
-			constants = [None, "This is getting confusing."],
+			constants = ["This is getting confusing.", None],
 			parameter_count = 1,
-			local_vars = [x, getprint, f, oldprint],
-			local_ref_vars = [oldprint],
+			local_vars = [x, oldprint, f, getprint],
+			local_ref_vars = [getprint, f, oldprint],
 			free_vars = [],
 			names = [print],
 			instructions = 
 			[
-				load_const	0
-				store_local	1
-				load_const	0
-				store_local	2
-				load_const	0
-				store_local	3
 				load_global	0
 				load_local	0
 				call	1
 				pop
 				load_func	0
 				alloc_closure	0
-				store_local	1
+				store_local	3
 				load_func	1
 				alloc_closure	0
 				store_local	2
 				load_global	0
-				store_local	3
+				store_local	1
 				load_func	2
-				push_ref	0
+				push_ref	2
 				alloc_closure	1
 				store_global	0
 				load_local	2
-				load_const	1
+				load_const	0
 				call	1
 				pop
-				load_const	0
+				load_const	1
 				return
 			]
 		}
 	],
-	constants = ["TEST1"],
+	constants = ["TEST1", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [debugprint, oldprint, print, f, input, intcast],
+	names = [debugprint, print, oldprint, f, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	2
+		store_global	1
 		load_func	1
 		alloc_closure	0
 		store_global	4
 		load_func	2
 		alloc_closure	0
 		store_global	5
-		load_global	2
+		load_global	1
 		store_global	0
-		load_global	2
-		store_global	1
+		load_global	1
+		store_global	2
 		load_func	3
 		alloc_closure	0
-		store_global	2
+		store_global	1
 		load_func	4
 		alloc_closure	0
 		store_global	3
@@ -197,5 +191,7 @@ function
 		load_const	0
 		call	1
 		pop
+		load_const	1
+		return
 	]
 }

@@ -42,7 +42,7 @@ function
 			]
 		}
 	],
-	constants = ["foo"],
+	constants = ["foo", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -65,6 +65,7 @@ function
 		load_global	0
 		call	1
 		pop
+		goto	1
 		load_global	0
 		not
 		if	6
@@ -73,5 +74,7 @@ function
 		call	1
 		pop
 		goto	-7
+		load_const	1
+		return
 	]
 }

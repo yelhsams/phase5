@@ -53,13 +53,13 @@ function
 					local_vars = [leftNode],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [left],
+					names = [this, left],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
 						load_local	0
-						field_store	0
+						field_store	1
 						load_const	0
 						return
 					]
@@ -72,13 +72,13 @@ function
 					local_vars = [rightNode],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [right],
+					names = [this, right],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
 						load_local	0
-						field_store	0
+						field_store	1
 						load_const	0
 						return
 					]
@@ -91,12 +91,12 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [left],
+					names = [this, left],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
-						field_load	0
+						field_load	1
 						return
 					]
 				},
@@ -108,12 +108,12 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [right],
+					names = [this, right],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
-						field_load	0
+						field_load	1
 						return
 					]
 				}
@@ -128,27 +128,27 @@ function
 			[
 				alloc_record
 				dup
-				dup
-				dup
-				dup
-				dup
-				dup
 				load_const	0
 				field_store	0
+				dup
 				load_const	0
 				field_store	1
+				dup
 				load_func	0
 				push_ref	0
 				alloc_closure	1
 				field_store	2
+				dup
 				load_func	1
 				push_ref	0
 				alloc_closure	1
 				field_store	3
+				dup
 				load_func	2
 				push_ref	0
 				alloc_closure	1
 				field_store	4
+				dup
 				load_func	3
 				push_ref	0
 				alloc_closure	1
@@ -163,8 +163,8 @@ function
 			functions = [],
 			constants = ["Creating ", " trees of depth ", 0, None, 1, "--> Top down construction", "--> Bottom up construction"],
 			parameter_count = 2,
-			local_vars = [depth, iNumIters, i, temproot],
-			local_ref_vars = [],
+			local_vars = [depth, iNumIters, temproot, i],
+			local_ref_vars = [i, temproot],
 			free_vars = [],
 			names = [print, Node, populate, maketree],
 			instructions = 
@@ -180,8 +180,9 @@ function
 				call	1
 				pop
 				load_const	2
-				store_local	2
-				load_local	2
+				store_local	3
+				goto	1
+				load_local	3
 				load_local	1
 				swap
 				gt
@@ -189,26 +190,27 @@ function
 				if	16
 				load_global	1
 				call	0
-				store_local	3
+				store_local	2
 				load_global	2
 				load_local	0
-				load_local	3
+				load_local	2
 				call	2
 				pop
 				load_const	3
-				store_local	3
-				load_local	2
+				store_local	2
+				load_local	3
 				load_const	4
 				add
-				store_local	2
+				store_local	3
 				goto	-20
 				load_global	0
 				load_const	5
 				call	1
 				pop
 				load_const	2
-				store_local	2
-				load_local	2
+				store_local	3
+				goto	1
+				load_local	3
 				load_local	1
 				swap
 				gt
@@ -217,13 +219,13 @@ function
 				load_global	3
 				load_local	0
 				call	1
-				store_local	3
+				store_local	2
 				load_const	3
-				store_local	3
-				load_local	2
+				store_local	2
+				load_local	3
 				load_const	4
 				add
-				store_local	2
+				store_local	3
 				goto	-16
 				load_global	0
 				load_const	6
@@ -238,8 +240,8 @@ function
 			functions = [],
 			constants = [0, None, 1],
 			parameter_count = 2,
-			local_vars = [depth, node, newLeft, newRight],
-			local_ref_vars = [],
+			local_vars = [depth, node, newRight, newLeft],
+			local_ref_vars = [depth, newLeft, newRight],
 			free_vars = [],
 			names = [Node, setLeft, setRight, populate, getLeft, getRight],
 			instructions = 
@@ -249,28 +251,27 @@ function
 				swap
 				geq
 				not
-				if	4
+				if	3
 				load_const	1
 				return
-				goto	35
 				load_local	0
 				load_const	2
 				sub
 				store_local	0
 				load_global	0
 				call	0
-				store_local	2
+				store_local	3
 				load_global	0
 				call	0
-				store_local	3
+				store_local	2
 				load_local	1
 				field_load	1
-				load_local	2
+				load_local	3
 				call	1
 				pop
 				load_local	1
 				field_load	2
-				load_local	3
+				load_local	2
 				call	1
 				pop
 				load_global	3
@@ -287,6 +288,7 @@ function
 				call	0
 				call	2
 				pop
+				goto	1
 				load_const	1
 				return
 			]
@@ -294,10 +296,10 @@ function
 		function
 		{
 			functions = [],
-			constants = [0, 1, None],
+			constants = [0, 1],
 			parameter_count = 1,
 			local_vars = [depth, newNode],
-			local_ref_vars = [],
+			local_ref_vars = [newNode],
 			free_vars = [],
 			names = [Node, setLeft, maketree, setRight],
 			instructions = 
@@ -307,13 +309,12 @@ function
 				swap
 				geq
 				not
-				if	7
+				if	6
 				load_global	0
 				call	0
 				store_local	1
 				load_local	1
 				return
-				goto	24
 				load_global	0
 				call	0
 				store_local	1
@@ -337,22 +338,20 @@ function
 				pop
 				load_local	1
 				return
-				load_const	2
-				return
 			]
 		}
 	],
-	constants = [4, 12, 1024, "Garbage collector bench4.mit", "Starting timeconstruction tests...", 2],
+	constants = [4, 12, 1024, "Garbage collector bench4.mit", "Starting timeconstruction tests...", 2, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [kMinTreeDepth, kMaxTreeDepth, kNumIters, Node, timeconstruction, populate, maketree, d, numIters, print, input, intcast],
+	names = [kMinTreeDepth, kMaxTreeDepth, kNumIters, Node, timeconstruction, populate, maketree, print, d, numIters, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	9
+		store_global	7
 		load_func	1
 		alloc_closure	0
 		store_global	10
@@ -377,37 +376,40 @@ function
 		load_func	6
 		alloc_closure	0
 		store_global	6
-		load_global	9
+		load_global	7
 		load_const	3
 		call	1
 		pop
-		load_global	9
+		load_global	7
 		load_const	4
 		call	1
 		pop
 		load_global	0
-		store_global	7
-		load_global	2
 		store_global	8
-		load_global	7
+		load_global	2
+		store_global	9
+		goto	1
+		load_global	8
 		load_global	1
 		swap
 		gt
 		not
 		if	15
 		load_global	4
-		load_global	7
 		load_global	8
+		load_global	9
 		call	2
 		pop
-		load_global	7
+		load_global	8
 		load_const	5
 		add
-		store_global	7
-		load_global	8
+		store_global	8
+		load_global	9
 		load_const	0
 		div
-		store_global	8
+		store_global	9
 		goto	-19
+		load_const	6
+		return
 	]
 }

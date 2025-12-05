@@ -53,7 +53,7 @@ function
 					local_vars = [z],
 					local_ref_vars = [],
 					free_vars = [x],
-					names = [j],
+					names = [j, x],
 					instructions = 
 					[
 						push_ref	0
@@ -68,22 +68,20 @@ function
 					]
 				}
 			],
-			constants = [None, 4],
+			constants = [4],
 			parameter_count = 2,
 			local_vars = [x, y, g],
-			local_ref_vars = [x],
+			local_ref_vars = [x, g],
 			free_vars = [],
 			names = [],
 			instructions = 
 			[
-				load_const	0
-				store_local	2
 				load_func	0
 				push_ref	0
 				alloc_closure	1
 				store_local	2
 				load_local	2
-				load_const	1
+				load_const	0
 				call	1
 				load_local	1
 				add
@@ -91,7 +89,7 @@ function
 			]
 		}
 	],
-	constants = [0, 1000, 1],
+	constants = [0, 1000, 1, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -115,6 +113,7 @@ function
 		load_func	3
 		alloc_closure	0
 		store_global	2
+		goto	1
 		load_global	0
 		load_const	1
 		swap
@@ -133,5 +132,7 @@ function
 		add
 		store_global	0
 		goto	-17
+		load_const	3
+		return
 	]
 }

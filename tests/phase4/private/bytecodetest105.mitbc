@@ -69,7 +69,7 @@ function
 			]
 		}
 	],
-	constants = [4, 6, "hello"],
+	constants = [4, 6, "hello", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -101,5 +101,7 @@ function
 		load_const	2
 		call	1
 		pop
+		load_const	3
+		return
 	]
 }

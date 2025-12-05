@@ -97,7 +97,7 @@ function
 							local_vars = [x],
 							local_ref_vars = [],
 							free_vars = [oldprint],
-							names = [debugprint],
+							names = [debugprint, oldprint],
 							instructions = 
 							[
 								load_global	0
@@ -118,35 +118,35 @@ function
 					],
 					constants = ["Here we go!", None],
 					parameter_count = 1,
-					local_vars = [x, oldprint, print],
-					local_ref_vars = [oldprint],
-					free_vars = [getprint, y],
-					names = [debugprint, z],
+					local_vars = [x, print, oldprint],
+					local_ref_vars = [oldprint, print],
+					free_vars = [getprint, oldprint, y],
+					names = [getprint, debugprint, y, z],
 					instructions = 
 					[
-						push_ref	1
+						push_ref	2
 						load_ref
 						call	0
-						store_local	1
+						store_local	2
 						load_func	0
 						push_ref	0
 						alloc_closure	1
-						store_local	2
-						load_global	0
+						store_local	1
+						load_global	1
 						load_const	0
 						call	1
 						pop
-						load_local	2
+						load_local	1
 						load_local	0
 						call	1
 						pop
-						load_local	2
-						push_ref	2
+						load_local	1
+						push_ref	4
 						load_ref
 						call	1
 						pop
-						load_local	2
-						load_global	1
+						load_local	1
+						load_global	3
 						call	1
 						pop
 						load_const	1
@@ -161,7 +161,7 @@ function
 					local_vars = [x],
 					local_ref_vars = [],
 					free_vars = [oldprint],
-					names = [],
+					names = [oldprint],
 					instructions = 
 					[
 						push_ref	0
@@ -178,83 +178,84 @@ function
 			],
 			constants = ["?", 234, "Hello", "???", "And now?", "is this for real?", "This is getting confusing."],
 			parameter_count = 1,
-			local_vars = [x, y, getprint, f, oldprint],
-			local_ref_vars = [getprint, y, oldprint],
+			local_vars = [x, f, getprint, oldprint, y],
+			local_ref_vars = [y, getprint, oldprint, f],
 			free_vars = [],
-			names = [z, print],
+			names = [print, z],
 			instructions = 
 			[
-				load_global	1
+				load_global	0
 				load_local	0
 				call	1
 				pop
 				load_local	0
 				load_const	0
 				add
-				store_local	1
+				store_local	4
 				load_const	1
-				store_global	0
+				store_global	1
 				load_func	0
 				alloc_closure	0
 				store_local	2
 				load_func	1
-				push_ref	0
 				push_ref	1
-				alloc_closure	2
-				store_local	3
-				load_local	3
+				push_ref	2
+				push_ref	0
+				alloc_closure	3
+				store_local	1
+				load_local	1
 				load_const	2
 				call	1
 				pop
-				load_local	1
+				load_local	4
 				load_const	3
 				add
-				store_local	1
+				store_local	4
 				load_const	4
-				store_global	0
-				load_local	3
+				store_global	1
+				load_local	1
 				load_const	5
 				call	1
 				pop
-				load_global	1
-				store_local	4
+				load_global	0
+				store_local	3
 				load_func	2
 				push_ref	2
 				alloc_closure	1
-				store_global	1
-				load_local	3
+				store_global	0
+				load_local	1
 				load_const	6
 				call	1
 				pop
-				load_local	3
+				load_local	1
 				return
 			]
 		}
 	],
-	constants = ["TEST1", "TEST2", "TEST3", "TEST4"],
+	constants = ["TEST1", "TEST2", "TEST3", "TEST4", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [debugprint, oldprint, print, f, g, input, intcast],
+	names = [debugprint, print, oldprint, f, g, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	2
+		store_global	1
 		load_func	1
 		alloc_closure	0
 		store_global	5
 		load_func	2
 		alloc_closure	0
 		store_global	6
-		load_global	2
+		load_global	1
 		store_global	0
-		load_global	2
-		store_global	1
+		load_global	1
+		store_global	2
 		load_func	3
 		alloc_closure	0
-		store_global	2
+		store_global	1
 		load_func	4
 		alloc_closure	0
 		store_global	3
@@ -274,5 +275,7 @@ function
 		load_const	3
 		call	1
 		pop
+		load_const	4
+		return
 	]
 }

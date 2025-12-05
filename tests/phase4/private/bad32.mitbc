@@ -53,7 +53,7 @@ function
 					local_vars = [y],
 					local_ref_vars = [],
 					free_vars = [print],
-					names = [],
+					names = [print],
 					instructions = 
 					[
 						push_ref	0
@@ -81,35 +81,31 @@ function
 					]
 				}
 			],
-			constants = [None, "STRING2"],
+			constants = ["STRING2", None],
 			parameter_count = 1,
-			local_vars = [x, f2, print],
-			local_ref_vars = [print],
+			local_vars = [x, print, f2],
+			local_ref_vars = [print, f2],
 			free_vars = [],
 			names = [],
 			instructions = 
 			[
-				load_const	0
-				store_local	1
-				load_const	0
-				store_local	2
 				load_func	0
 				push_ref	0
 				alloc_closure	1
-				store_local	1
-				load_local	1
-				load_const	1
+				store_local	2
+				load_local	2
+				load_const	0
 				call	1
 				pop
 				load_func	1
 				alloc_closure	0
-				store_local	2
-				load_const	0
+				store_local	1
+				load_const	1
 				return
 			]
 		}
 	],
-	constants = ["STRING2"],
+	constants = ["STRING2", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -133,5 +129,7 @@ function
 		load_const	0
 		call	1
 		pop
+		load_const	1
+		return
 	]
 }

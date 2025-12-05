@@ -53,7 +53,7 @@ function
 					local_vars = [x],
 					local_ref_vars = [],
 					free_vars = [z],
-					names = [print],
+					names = [print, z],
 					instructions = 
 					[
 						load_global	0
@@ -65,18 +65,19 @@ function
 						eq
 						not
 						not
-						if	6
+						if	7
 						push_ref	0
 						load_ref
 						load_const	0
 						call	1
 						pop
+						goto	1
 						load_const	0
 						return
 					]
 				}
 			],
-			constants = [None, 1],
+			constants = [1, None],
 			parameter_count = 0,
 			local_vars = [z],
 			local_ref_vars = [z],
@@ -84,22 +85,20 @@ function
 			names = [],
 			instructions = 
 			[
-				load_const	0
-				store_local	0
 				load_func	0
 				push_ref	0
 				alloc_closure	1
 				store_local	0
 				load_local	0
-				load_const	1
+				load_const	0
 				call	1
 				pop
-				load_const	0
+				load_const	1
 				return
 			]
 		}
 	],
-	constants = [20000, 0, 1],
+	constants = [20000, 0, 1, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -120,6 +119,7 @@ function
 		store_global	0
 		load_const	1
 		store_global	1
+		goto	1
 		load_global	1
 		load_global	0
 		swap
@@ -137,5 +137,7 @@ function
 		add
 		store_global	1
 		goto	-16
+		load_const	3
+		return
 	]
 }

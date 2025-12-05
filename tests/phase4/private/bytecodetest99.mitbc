@@ -89,17 +89,17 @@ function
 			]
 		}
 	],
-	constants = [1, "foobar", "foo", "bar", "nope", 5, false, 0],
+	constants = [1, "foobar", "foo", "bar", "nope", 5, false, 0, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [x, b, r, f, z, f2, y, print, input, intcast],
+	names = [x, b, r, y, print, f, z, f2, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	7
+		store_global	4
 		load_func	1
 		alloc_closure	0
 		store_global	8
@@ -113,9 +113,9 @@ function
 		store_global	1
 		alloc_record
 		dup
-		dup
 		load_const	2
-		field_store	6
+		field_store	3
+		dup
 		load_const	3
 		field_store	0
 		store_global	2
@@ -124,25 +124,27 @@ function
 		eq
 		not
 		if	6
-		load_global	7
+		load_global	4
 		load_global	2
 		call	1
 		pop
-		goto	5
-		load_global	7
+		goto	6
+		load_global	4
 		load_const	4
 		call	1
 		pop
+		goto	1
 		load_func	3
 		alloc_closure	0
-		store_global	3
+		store_global	5
+		goto	1
 		load_global	0
 		load_const	5
 		swap
 		gt
 		not
 		if	13
-		load_global	3
+		load_global	5
 		load_global	0
 		load_global	0
 		load_const	0
@@ -154,6 +156,7 @@ function
 		add
 		store_global	0
 		goto	-17
+		goto	1
 		load_const	6
 		not
 		if	6
@@ -163,18 +166,20 @@ function
 		store_global	0
 		goto	-7
 		load_const	0
-		store_global	4
+		store_global	6
 		load_func	4
 		alloc_closure	0
-		store_global	5
+		store_global	7
+		load_global	4
 		load_global	7
-		load_global	5
 		call	0
 		call	1
 		pop
-		load_global	7
 		load_global	4
+		load_global	6
 		call	1
 		pop
+		load_const	8
+		return
 	]
 }

@@ -53,7 +53,7 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [i, r],
-					names = [q, push, arguments],
+					names = [i, r, q, push, arguments],
 					instructions = 
 					[
 						push_ref	0
@@ -66,11 +66,11 @@ function
 						push_ref	1
 						load_ref
 						index_load
-						field_load	0
-						field_load	1
-						load_global	2
+						field_load	2
+						field_load	3
+						load_global	4
 						call	1
-						field_store	0
+						field_store	2
 						load_const	0
 						return
 					]
@@ -79,9 +79,9 @@ function
 			constants = ["GoogleAnalyticsObject", 1, 0, None],
 			parameter_count = 7,
 			local_vars = [i, s, o, g, r, a, m],
-			local_ref_vars = [i, r],
+			local_ref_vars = [i, r, a, m],
 			free_vars = [],
-			names = [l, Date, createElement, getElementsByTagName, async, src, parentNode, insertBefore],
+			names = [Date, l, createElement, getElementsByTagName, async, src, parentNode, insertBefore],
 			instructions = 
 			[
 				load_local	0
@@ -105,10 +105,10 @@ function
 				load_local	4
 				index_load
 				load_const	1
-				load_global	1
+				load_global	0
 				call	0
 				mul
-				field_store	0
+				field_store	1
 				load_local	1
 				field_load	2
 				load_local	2
@@ -141,7 +141,7 @@ function
 			]
 		}
 	],
-	constants = ["script", "https://www.google-analytics.com/analytics.js", "ga", "create", "UA-XXXXX-Y", "auto", "send", "pageview"],
+	constants = ["script", "https://www.google-analytics.com/analytics.js", "ga", "create", "UA-XXXXX-Y", "auto", "send", "pageview", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -180,5 +180,7 @@ function
 		load_const	7
 		call	2
 		pop
+		load_const	8
+		return
 	]
 }

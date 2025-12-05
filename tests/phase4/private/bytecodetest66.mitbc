@@ -44,16 +44,14 @@ function
 		function
 		{
 			functions = [],
-			constants = [None, 1, "lol", 0],
+			constants = [1],
 			parameter_count = 2,
 			local_vars = [x, y, out],
-			local_ref_vars = [],
+			local_ref_vars = [out],
 			free_vars = [],
 			names = [calls, print],
 			instructions = 
 			[
-				load_const	0
-				store_local	2
 				load_local	0
 				load_global	0
 				add
@@ -63,18 +61,10 @@ function
 				call	1
 				pop
 				load_global	0
-				load_const	1
+				load_const	0
 				add
 				store_global	0
 				load_local	2
-				return
-				load_global	1
-				load_const	2
-				call	1
-				pop
-				load_const	1
-				load_const	3
-				div
 				return
 			]
 		},
@@ -104,7 +94,7 @@ function
 		function
 		{
 			functions = [],
-			constants = [10, 0, "oops", None],
+			constants = [10, 0, None],
 			parameter_count = 0,
 			local_vars = [],
 			local_ref_vars = [],
@@ -112,25 +102,21 @@ function
 			names = [z, print],
 			instructions = 
 			[
+				goto	1
 				load_global	0
 				load_const	0
 				swap
 				gt
 				not
-				if	8
+				if	3
 				load_const	1
 				return
-				load_global	1
 				load_const	2
-				call	1
-				pop
-				goto	-12
-				load_const	3
 				return
 			]
 		}
 	],
-	constants = [0, "5", 1, "6", "3", "test", "foo", 999, 3, "x", "ok"],
+	constants = [0, "5", 1, "6", "3", "test", "foo", 999, 3, "x", "ok", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -190,6 +176,7 @@ function
 		pop
 		load_const	0
 		store_global	4
+		goto	1
 		load_global	4
 		load_const	7
 		swap
@@ -211,9 +198,9 @@ function
 		pop
 		alloc_record
 		dup
-		dup
 		load_const	0
 		field_store	8
+		dup
 		load_const	8
 		field_store	9
 		store_global	7
@@ -227,5 +214,7 @@ function
 		load_const	10
 		call	1
 		pop
+		load_const	11
+		return
 	]
 }

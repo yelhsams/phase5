@@ -53,59 +53,54 @@ function
 					local_vars = [x],
 					local_ref_vars = [],
 					free_vars = [i],
-					names = [v],
+					names = [i, v],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
 						push_ref	0
 						load_ref
-						field_load	0
+						field_load	1
 						load_local	0
 						sub
-						field_store	0
+						field_store	1
 						load_const	0
 						return
 					]
 				}
 			],
-			constants = [None, 5000, 0, 2],
+			constants = [5000, 0, 2],
 			parameter_count = 0,
-			local_vars = [i, sum, g],
-			local_ref_vars = [i],
+			local_vars = [g, sum, i],
+			local_ref_vars = [i, sum, g],
 			free_vars = [],
 			names = [v],
 			instructions = 
 			[
-				load_const	0
-				store_local	0
-				load_const	0
-				store_local	1
-				load_const	0
-				store_local	2
 				alloc_record
 				dup
-				load_const	1
+				load_const	0
 				field_store	0
-				store_local	0
-				load_const	2
+				store_local	2
+				load_const	1
 				store_local	1
-				load_local	0
+				goto	1
+				load_local	2
 				field_load	0
-				load_const	2
+				load_const	1
 				gt
 				not
 				if	15
 				load_func	0
 				push_ref	0
 				alloc_closure	1
-				store_local	2
-				load_local	2
-				load_const	3
+				store_local	0
+				load_local	0
+				load_const	2
 				call	1
 				pop
 				load_local	1
-				load_local	0
+				load_local	2
 				field_load	0
 				add
 				store_local	1
@@ -115,7 +110,7 @@ function
 			]
 		}
 	],
-	constants = [],
+	constants = [None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -140,5 +135,7 @@ function
 		call	0
 		call	1
 		pop
+		load_const	0
+		return
 	]
 }

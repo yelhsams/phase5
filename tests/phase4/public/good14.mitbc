@@ -53,7 +53,7 @@ function
 					local_vars = [x],
 					local_ref_vars = [],
 					free_vars = [t],
-					names = [],
+					names = [t],
 					instructions = 
 					[
 						load_local	0
@@ -81,17 +81,17 @@ function
 			]
 		}
 	],
-	constants = ["g(5) = ", 5, "You should print this", "But not this", 1, "Or this, but the check should not crash", "One last thing to print ", "Bye!"],
+	constants = ["g(5) = ", 5, "You should print this", "But not this", 1, "Or this, but the check should not crash", "One last thing to print ", "Bye!", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [f, g, q, h, a, b, c, print, x, y, input, intcast],
+	names = [f, g, print, q, h, a, x, y, b, c, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	7
+		store_global	2
 		load_func	1
 		alloc_closure	0
 		store_global	10
@@ -104,7 +104,7 @@ function
 		load_global	0
 		call	0
 		store_global	1
-		load_global	7
+		load_global	2
 		load_const	0
 		load_global	1
 		load_const	1
@@ -114,89 +114,97 @@ function
 		pop
 		load_global	0
 		call	0
-		store_global	2
-		load_global	1
 		store_global	3
-		load_global	3
 		load_global	1
-		eq
-		not
-		if	5
-		load_global	7
-		load_const	2
-		call	1
-		pop
-		load_global	1
-		load_global	2
-		eq
-		not
-		if	5
-		load_global	7
-		load_const	3
-		call	1
-		pop
-		alloc_record
-		dup
-		dup
-		load_const	4
-		field_store	8
-		load_const	4
-		field_store	9
 		store_global	4
-		alloc_record
-		dup
-		dup
-		load_const	4
-		field_store	8
-		load_const	4
-		field_store	9
-		store_global	5
-		load_global	4
-		store_global	6
-		load_global	4
-		load_global	6
-		eq
-		not
-		if	5
-		load_global	7
-		load_const	2
-		call	1
-		pop
-		load_global	4
-		load_global	5
-		eq
-		not
-		if	5
-		load_global	7
-		load_const	3
-		call	1
-		pop
 		load_global	4
 		load_global	1
 		eq
 		not
-		if	5
-		load_global	7
+		if	6
+		load_global	2
+		load_const	2
+		call	1
+		pop
+		goto	1
+		load_global	1
+		load_global	3
+		eq
+		not
+		if	6
+		load_global	2
+		load_const	3
+		call	1
+		pop
+		goto	1
+		alloc_record
+		dup
+		load_const	4
+		field_store	6
+		dup
+		load_const	4
+		field_store	7
+		store_global	5
+		alloc_record
+		dup
+		load_const	4
+		field_store	6
+		dup
+		load_const	4
+		field_store	7
+		store_global	8
+		load_global	5
+		store_global	9
+		load_global	5
+		load_global	9
+		eq
+		not
+		if	6
+		load_global	2
+		load_const	2
+		call	1
+		pop
+		goto	1
+		load_global	5
+		load_global	8
+		eq
+		not
+		if	6
+		load_global	2
+		load_const	3
+		call	1
+		pop
+		goto	1
+		load_global	5
+		load_global	1
+		eq
+		not
+		if	6
+		load_global	2
 		load_const	5
 		call	1
 		pop
-		load_global	4
+		goto	1
+		load_global	5
 		load_global	1
 		eq
 		not
 		not
-		if	9
-		load_global	7
+		if	10
+		load_global	2
 		load_const	6
-		load_global	4
+		load_global	5
 		load_global	1
 		eq
 		add
 		call	1
 		pop
-		load_global	7
+		goto	1
+		load_global	2
 		load_const	7
 		call	1
 		pop
+		load_const	8
+		return
 	]
 }

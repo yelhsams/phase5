@@ -47,13 +47,11 @@ function
 			constants = [None, "passed", "failed", " "],
 			parameter_count = 2,
 			local_vars = [testName, result, resultstr],
-			local_ref_vars = [],
+			local_ref_vars = [resultstr],
 			free_vars = [],
 			names = [oldprint],
 			instructions = 
 			[
-				load_const	0
-				store_local	2
 				load_const	0
 				store_local	2
 				load_local	1
@@ -61,9 +59,10 @@ function
 				if	4
 				load_const	1
 				store_local	2
-				goto	3
+				goto	4
 				load_const	2
 				store_local	2
+				goto	1
 				load_global	0
 				load_local	0
 				load_const	3
@@ -79,66 +78,57 @@ function
 		function
 		{
 			functions = [],
-			constants = [None, "7", 14, false, true],
+			constants = ["7", 14, false, true],
 			parameter_count = 0,
-			local_vars = [y, z],
-			local_ref_vars = [],
+			local_vars = [z, y],
+			local_ref_vars = [y, z],
 			free_vars = [],
 			names = [intcast],
 			instructions = 
 			[
 				load_const	0
-				store_local	0
+				store_local	1
 				load_const	0
-				store_local	1
-				load_const	1
 				store_local	0
-				load_const	1
-				store_local	1
+				load_global	0
+				load_local	1
+				call	1
 				load_global	0
 				load_local	0
 				call	1
-				load_global	0
-				load_local	1
-				call	1
 				add
-				store_local	1
-				load_local	1
-				load_const	2
+				store_local	0
+				load_local	0
+				load_const	1
 				eq
 				not
 				not
-				if	4
+				if	3
+				load_const	2
+				return
 				load_const	3
-				return
-				goto	3
-				load_const	4
-				return
-				load_const	0
 				return
 			]
 		},
 		function
 		{
 			functions = [],
-			constants = [None, "Please type hello:", "hello"],
+			constants = ["Please type hello:", "hello"],
 			parameter_count = 0,
 			local_vars = [inp],
-			local_ref_vars = [],
+			local_ref_vars = [inp],
 			free_vars = [],
 			names = [oldprint],
 			instructions = 
 			[
-				load_const	0
-				store_local	0
 				load_global	0
-				load_const	1
+				load_const	0
 				call	1
 				pop
-				load_const	2
+				load_const	1
 				store_local	0
 				load_local	0
-				load_const	2
+				load_const	1
 				eq
 				return
 			]
@@ -155,7 +145,7 @@ function
 					local_vars = [x, y],
 					local_ref_vars = [],
 					free_vars = [z],
-					names = [y],
+					names = [y, z],
 					instructions = 
 					[
 						load_local	0
@@ -168,46 +158,40 @@ function
 					]
 				}
 			],
-			constants = [None, 5, 9, 6, 7, 20],
+			constants = [5, 9, 6, 7, 20],
 			parameter_count = 0,
-			local_vars = [x, z, func1],
-			local_ref_vars = [z],
+			local_vars = [func1, z, x],
+			local_ref_vars = [x, z, func1],
 			free_vars = [],
 			names = [y],
 			instructions = 
 			[
 				load_const	0
-				store_local	0
-				load_const	0
-				store_local	1
-				load_const	0
 				store_local	2
 				load_const	1
-				store_local	0
-				load_const	2
 				store_local	1
 				load_func	0
-				push_ref	0
+				push_ref	1
 				alloc_closure	1
-				store_local	2
-				load_local	2
+				store_local	0
+				load_local	0
+				load_const	2
 				load_const	3
-				load_const	4
 				call	2
 				load_global	0
 				load_local	1
 				add
-				load_const	3
-				add
-				eq
-				load_local	2
-				load_const	3
-				load_const	4
-				call	2
-				load_const	5
 				load_const	2
 				add
+				eq
+				load_local	0
+				load_const	2
 				load_const	3
+				call	2
+				load_const	4
+				load_const	1
+				add
+				load_const	2
 				add
 				eq
 				and
@@ -220,21 +204,19 @@ function
 			constants = [None],
 			parameter_count = 0,
 			local_vars = [funcs],
-			local_ref_vars = [],
+			local_ref_vars = [funcs],
 			free_vars = [],
 			names = [intcastTest, inputTest, nestedFuncTest],
 			instructions = 
 			[
-				load_const	0
-				store_local	0
 				alloc_record
-				dup
-				dup
 				dup
 				load_global	0
 				field_store	0
+				dup
 				load_global	1
 				field_store	1
+				dup
 				load_global	2
 				field_store	2
 				store_local	0
@@ -254,13 +236,11 @@ function
 			constants = [None, false],
 			parameter_count = 0,
 			local_vars = [funs],
-			local_ref_vars = [],
+			local_ref_vars = [funs],
 			free_vars = [],
 			names = [deleteFuns, intcastTest, inputTest, nestedFuncTest],
 			instructions = 
 			[
-				load_const	0
-				store_local	0
 				load_global	0
 				call	0
 				store_local	0
@@ -277,10 +257,9 @@ function
 				and
 				not
 				not
-				if	4
+				if	3
 				load_const	1
 				return
-				goto	13
 				load_local	0
 				field_load	1
 				call	0
@@ -293,12 +272,10 @@ function
 				call	0
 				and
 				return
-				load_const	0
-				return
 			]
 		}
 	],
-	constants = [20, "intcastTest", "intcast", "inputTest", "input", "nestedFuncTest", "recordPreservationTest", "all tests"],
+	constants = [20, "intcastTest", "intcast", "inputTest", "input", "nestedFuncTest", "recordPreservationTest", "all tests", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -339,18 +316,18 @@ function
 		store_global	7
 		alloc_record
 		dup
-		dup
-		dup
-		dup
 		load_global	2
 		call	0
 		field_store	9
+		dup
 		load_global	3
 		call	0
 		field_store	10
+		dup
 		load_global	5
 		call	0
 		field_store	5
+		dup
 		load_global	7
 		call	0
 		field_store	7
@@ -402,5 +379,7 @@ function
 		and
 		call	2
 		pop
+		load_const	8
+		return
 	]
 }

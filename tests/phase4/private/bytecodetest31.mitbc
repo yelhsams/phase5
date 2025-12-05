@@ -42,12 +42,12 @@ function
 			]
 		}
 	],
-	constants = [true, false],
+	constants = [true, false, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [x, y, bees, print, input, intcast],
+	names = [x, bees, y, print, input, intcast],
 	instructions = 
 	[
 		load_func	0
@@ -62,22 +62,24 @@ function
 		alloc_record
 		dup
 		load_const	0
-		field_store	2
+		field_store	1
 		store_global	0
 		load_global	0
-		store_global	1
-		load_global	1
+		store_global	2
+		load_global	2
 		load_const	1
-		field_store	2
+		field_store	1
 		load_global	3
-		load_global	1
-		field_load	2
+		load_global	2
+		field_load	1
 		call	1
 		pop
 		load_global	3
 		load_global	0
-		field_load	2
+		field_load	1
 		call	1
 		pop
+		load_const	2
+		return
 	]
 }

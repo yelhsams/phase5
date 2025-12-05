@@ -1,0 +1,4 @@
+x = 1;\r\n
+y = 2;\r\n
+// comment\r\n
+z = x + y;\r\n

@@ -76,31 +76,31 @@ function
 					local_vars = [x],
 					local_ref_vars = [],
 					free_vars = [],
-					names = [x, print],
+					names = [print, x],
 					instructions = 
 					[
-						load_global	1
 						load_global	0
+						load_global	1
 						call	1
 						pop
 						load_const	0
-						store_global	0
+						store_global	1
 						load_func	0
 						alloc_closure	0
-						store_global	0
-						load_global	0
+						store_global	1
+						load_global	1
 						load_const	1
 						call	1
 						pop
-						load_global	0
+						load_global	1
 						return
 					]
 				}
 			],
 			constants = [25, 10, None],
 			parameter_count = 1,
-			local_vars = [x, g, u],
-			local_ref_vars = [],
+			local_vars = [x, u, g],
+			local_ref_vars = [x, g, u],
 			free_vars = [],
 			names = [print],
 			instructions = 
@@ -113,12 +113,12 @@ function
 				store_local	0
 				load_func	0
 				alloc_closure	0
-				store_local	1
-				load_local	1
-				load_const	1
-				call	1
 				store_local	2
 				load_local	2
+				load_const	1
+				call	1
+				store_local	1
+				load_local	1
 				load_const	1
 				call	1
 				pop
@@ -127,7 +127,7 @@ function
 			]
 		}
 	],
-	constants = ["Outer", 1000],
+	constants = ["Outer", 1000, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -157,5 +157,7 @@ function
 		load_const	1
 		call	1
 		pop
+		load_const	2
+		return
 	]
 }

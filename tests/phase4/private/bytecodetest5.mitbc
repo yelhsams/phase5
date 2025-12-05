@@ -53,20 +53,20 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [print, x, y],
+					names = [print, this, x, y],
 					instructions = 
 					[
 						load_global	0
 						load_const	0
 						push_ref	0
 						load_ref
-						field_load	1
+						field_load	2
 						add
 						load_const	1
 						add
 						push_ref	0
 						load_ref
-						field_load	2
+						field_load	3
 						add
 						load_const	2
 						add
@@ -77,7 +77,7 @@ function
 					]
 				}
 			],
-			constants = [None],
+			constants = [],
 			parameter_count = 4,
 			local_vars = [x, y, a, b, this],
 			local_ref_vars = [this],
@@ -85,22 +85,20 @@ function
 			names = [x, y, a, b, print],
 			instructions = 
 			[
-				load_const	0
-				store_local	4
 				alloc_record
-				dup
-				dup
-				dup
-				dup
 				dup
 				load_local	0
 				field_store	0
+				dup
 				load_local	1
 				field_store	1
+				dup
 				load_local	2
 				field_store	2
+				dup
 				load_local	3
 				field_store	3
+				dup
 				load_func	0
 				push_ref	0
 				alloc_closure	1
@@ -116,12 +114,12 @@ function
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [Rect, p, mega_nested, print, still_nested, yep, still, nested, herp, derp, input, intcast],
+	names = [Rect, p, print, mega_nested, derp, herp, nested, still, yep, still_nested, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	3
+		store_global	2
 		load_func	1
 		alloc_closure	0
 		store_global	10
@@ -139,10 +137,10 @@ function
 		call	4
 		store_global	1
 		load_global	1
-		field_load	3
+		field_load	2
 		call	0
 		pop
-		load_global	3
+		load_global	2
 		load_global	1
 		call	1
 		pop
@@ -159,36 +157,38 @@ function
 		alloc_record
 		dup
 		load_const	3
-		field_store	9
-		field_store	8
-		field_store	7
-		field_store	6
-		field_store	5
 		field_store	4
-		store_global	2
-		load_global	2
-		field_load	4
+		field_store	5
+		field_store	6
+		field_store	7
+		field_store	8
+		field_store	9
+		store_global	3
+		load_global	3
+		field_load	9
 		load_const	4
 		index_load
-		field_load	6
+		field_load	7
 		load_const	5
 		load_const	6
 		add
 		index_load
-		field_load	8
-		load_global	2
-		field_store	9
-		load_global	3
-		load_global	2
-		field_load	4
 		field_load	5
-		field_load	6
-		field_load	7
-		field_load	8
-		field_load	9
+		load_global	3
+		field_store	4
 		load_global	2
+		load_global	3
+		field_load	9
+		field_load	8
+		field_load	7
+		field_load	6
+		field_load	5
+		field_load	4
+		load_global	3
 		eq
 		call	1
 		pop
+		load_const	3
+		return
 	]
 }

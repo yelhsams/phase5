@@ -42,12 +42,12 @@ function
 			]
 		}
 	],
-	constants = [100000, 0, 1],
+	constants = [100000, 0, 1, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [i, x, y, v, t, print, input, intcast],
+	names = [i, x, v, y, t, print, input, intcast],
 	instructions = 
 	[
 		load_func	0
@@ -61,6 +61,7 @@ function
 		store_global	7
 		load_const	0
 		store_global	0
+		goto	1
 		load_global	0
 		load_const	1
 		gt
@@ -69,15 +70,15 @@ function
 		alloc_record
 		dup
 		load_global	0
-		field_store	3
+		field_store	2
 		store_global	1
 		alloc_record
 		dup
 		load_global	1
 		field_store	4
-		store_global	2
+		store_global	3
 		load_global	1
-		load_global	2
+		load_global	3
 		field_store	4
 		load_global	0
 		load_const	2
@@ -86,8 +87,10 @@ function
 		goto	-22
 		load_global	5
 		load_global	1
-		field_load	3
+		field_load	2
 		call	1
 		pop
+		load_const	3
+		return
 	]
 }

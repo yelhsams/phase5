@@ -67,7 +67,7 @@ function
 			]
 		}
 	],
-	constants = ["0", 1, 0],
+	constants = ["0", 1, 0, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -91,6 +91,7 @@ function
 		load_const	0
 		call	1
 		store_global	1
+		goto	1
 		load_global	1
 		load_const	1
 		add
@@ -103,5 +104,7 @@ function
 		call	1
 		store_global	1
 		goto	-11
+		load_const	3
+		return
 	]
 }

@@ -53,7 +53,7 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [x],
-					names = [],
+					names = [x],
 					instructions = 
 					[
 						push_ref	0
@@ -69,7 +69,7 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [y],
-					names = [],
+					names = [y],
 					instructions = 
 					[
 						push_ref	0
@@ -85,7 +85,7 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [x, y],
-					names = [print],
+					names = [print, x, y],
 					instructions = 
 					[
 						load_global	0
@@ -114,7 +114,7 @@ function
 					local_vars = [that],
 					local_ref_vars = [],
 					free_vars = [x, y],
-					names = [getx, gety],
+					names = [getx, x, gety, y],
 					instructions = 
 					[
 						load_local	0
@@ -124,7 +124,7 @@ function
 						load_ref
 						eq
 						load_local	0
-						field_load	1
+						field_load	2
 						call	0
 						push_ref	1
 						load_ref
@@ -141,20 +141,20 @@ function
 					local_vars = [that],
 					local_ref_vars = [],
 					free_vars = [x, y],
-					names = [Vector, getx, gety],
+					names = [Vector, x, getx, y, gety],
 					instructions = 
 					[
 						load_global	0
 						push_ref	0
 						load_ref
 						load_local	0
-						field_load	1
+						field_load	2
 						call	0
 						add
 						push_ref	1
 						load_ref
 						load_local	0
-						field_load	2
+						field_load	4
 						call	0
 						add
 						call	2
@@ -165,35 +165,35 @@ function
 			constants = [],
 			parameter_count = 2,
 			local_vars = [x, y, this],
-			local_ref_vars = [x, y],
+			local_ref_vars = [x, y, this],
 			free_vars = [],
 			names = [getx, gety, print, equals, plus],
 			instructions = 
 			[
 				alloc_record
 				dup
-				dup
-				dup
-				dup
-				dup
 				load_func	0
 				push_ref	0
 				alloc_closure	1
 				field_store	0
+				dup
 				load_func	1
 				push_ref	1
 				alloc_closure	1
 				field_store	1
+				dup
 				load_func	2
 				push_ref	0
 				push_ref	1
 				alloc_closure	2
 				field_store	2
+				dup
 				load_func	3
 				push_ref	0
 				push_ref	1
 				alloc_closure	2
 				field_store	3
+				dup
 				load_func	4
 				push_ref	0
 				push_ref	1
@@ -205,17 +205,17 @@ function
 			]
 		}
 	],
-	constants = [2, 4, "V1", "V2", "The vectors are equal"],
+	constants = [2, 4, "V1", "V2", "The vectors are equal", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [Vector, v1, v2, x, print, plus, equals, input, intcast],
+	names = [Vector, v1, v2, print, x, plus, equals, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	4
+		store_global	3
 		load_func	1
 		alloc_closure	0
 		store_global	7
@@ -235,40 +235,43 @@ function
 		load_const	1
 		call	2
 		store_global	2
-		load_global	4
+		load_global	3
 		load_const	2
 		call	1
 		pop
 		load_global	1
-		field_load	4
+		field_load	3
 		call	0
 		pop
-		load_global	4
+		load_global	3
 		load_const	3
 		call	1
 		pop
 		load_global	2
-		field_load	4
+		field_load	3
 		call	0
 		pop
 		load_global	1
 		field_load	5
 		load_global	1
 		call	1
-		store_global	3
-		load_global	3
+		store_global	4
+		load_global	4
 		field_load	6
 		load_global	2
 		call	1
 		not
-		if	9
-		load_global	4
+		if	10
+		load_global	3
 		load_const	4
 		call	1
 		pop
-		load_global	3
-		field_load	4
+		load_global	4
+		field_load	3
 		call	0
 		pop
+		goto	1
+		load_const	5
+		return
 	]
 }

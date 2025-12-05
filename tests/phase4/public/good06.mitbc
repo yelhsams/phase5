@@ -53,20 +53,20 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [print, x, y],
+					names = [print, this, x, y],
 					instructions = 
 					[
 						load_global	0
 						load_const	0
 						push_ref	0
 						load_ref
-						field_load	1
+						field_load	2
 						add
 						load_const	1
 						add
 						push_ref	0
 						load_ref
-						field_load	2
+						field_load	3
 						add
 						load_const	2
 						add
@@ -87,12 +87,12 @@ function
 			[
 				alloc_record
 				dup
-				dup
-				dup
 				load_local	0
 				field_store	0
+				dup
 				load_local	1
 				field_store	1
+				dup
 				load_func	0
 				push_ref	0
 				alloc_closure	1
@@ -103,7 +103,7 @@ function
 			]
 		}
 	],
-	constants = [5],
+	constants = [5, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -132,5 +132,7 @@ function
 		field_load	2
 		call	0
 		pop
+		load_const	1
+		return
 	]
 }

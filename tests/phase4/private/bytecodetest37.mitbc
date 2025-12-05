@@ -53,7 +53,7 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [x],
-					names = [print],
+					names = [print, x],
 					instructions = 
 					[
 						load_global	0
@@ -66,25 +66,21 @@ function
 					]
 				}
 			],
-			constants = [None, 10],
+			constants = [10],
 			parameter_count = 0,
-			local_vars = [x, child],
-			local_ref_vars = [x],
+			local_vars = [child, x],
+			local_ref_vars = [x, child],
 			free_vars = [],
 			names = [],
 			instructions = 
 			[
 				load_const	0
-				store_local	0
-				load_const	0
 				store_local	1
-				load_const	1
-				store_local	0
 				load_func	0
 				push_ref	0
 				alloc_closure	1
-				store_local	1
-				load_local	1
+				store_local	0
+				load_local	0
 				return
 			]
 		},
@@ -104,17 +100,17 @@ function
 			]
 		}
 	],
-	constants = [0, "forcing collection", 100000, 1, "done"],
+	constants = [0, "forcing collection", 100000, 1, "done", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [parent, q, f, n, z, print, input, intcast],
+	names = [parent, q, f, n, print, z, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	5
+		store_global	4
 		load_func	1
 		alloc_closure	0
 		store_global	6
@@ -135,10 +131,11 @@ function
 		store_global	2
 		load_const	0
 		store_global	3
-		load_global	5
+		load_global	4
 		load_const	1
 		call	1
 		pop
+		goto	1
 		load_global	3
 		load_const	2
 		swap
@@ -149,18 +146,20 @@ function
 		call	0
 		pop
 		alloc_record
-		store_global	4
+		store_global	5
 		load_global	3
 		load_const	3
 		add
 		store_global	3
 		goto	-15
-		load_global	5
+		load_global	4
 		load_const	4
 		call	1
 		pop
 		load_global	1
 		call	0
 		pop
+		load_const	5
+		return
 	]
 }

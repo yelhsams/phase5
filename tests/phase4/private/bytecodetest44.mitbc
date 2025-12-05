@@ -42,7 +42,7 @@ function
 			]
 		}
 	],
-	constants = [0, 100000, 1],
+	constants = [0, 100000, 1, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -205,6 +205,7 @@ function
 		store_global	55
 		load_const	0
 		store_global	56
+		goto	1
 		load_global	56
 		load_const	1
 		swap
@@ -576,5 +577,7 @@ function
 		load_global	55
 		call	1
 		pop
+		load_const	3
+		return
 	]
 }

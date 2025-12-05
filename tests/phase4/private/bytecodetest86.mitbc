@@ -44,23 +44,21 @@ function
 		function
 		{
 			functions = [],
-			constants = [None, 2],
+			constants = [2],
 			parameter_count = 0,
 			local_vars = [obj],
-			local_ref_vars = [],
+			local_ref_vars = [obj],
 			free_vars = [],
-			names = [y, i, z],
+			names = [i, y, z],
 			instructions = 
 			[
-				load_const	0
-				store_local	0
 				alloc_record
 				dup
+				load_global	0
+				field_store	1
 				dup
-				load_global	1
-				field_store	0
-				load_const	1
-				load_global	1
+				load_const	0
+				load_global	0
 				mul
 				field_store	2
 				store_local	0
@@ -70,7 +68,7 @@ function
 			]
 		}
 	],
-	constants = [1000, 0, 1],
+	constants = [1000, 0, 1, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -89,6 +87,7 @@ function
 		store_global	4
 		load_const	0
 		store_global	0
+		goto	1
 		load_global	0
 		load_const	1
 		geq
@@ -107,5 +106,7 @@ function
 		sub
 		store_global	0
 		goto	-17
+		load_const	3
+		return
 	]
 }

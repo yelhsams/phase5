@@ -44,7 +44,7 @@ function
 		function
 		{
 			functions = [],
-			constants = [0, 1, "x", None],
+			constants = [0, 1, "x"],
 			parameter_count = 2,
 			local_vars = [x, val],
 			local_ref_vars = [],
@@ -56,7 +56,7 @@ function
 				load_const	0
 				gt
 				not
-				if	11
+				if	10
 				load_global	0
 				load_local	0
 				load_const	1
@@ -66,15 +66,12 @@ function
 				add
 				call	2
 				return
-				goto	3
 				load_local	1
-				return
-				load_const	3
 				return
 			]
 		}
 	],
-	constants = [7, 5, ""],
+	constants = [7, 5, "", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -103,5 +100,7 @@ function
 		call	2
 		call	1
 		pop
+		load_const	3
+		return
 	]
 }

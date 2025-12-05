@@ -53,13 +53,13 @@ function
 					local_vars = [leftNode],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [left],
+					names = [this, left],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
 						load_local	0
-						field_store	0
+						field_store	1
 						load_const	0
 						return
 					]
@@ -72,13 +72,13 @@ function
 					local_vars = [rightNode],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [right],
+					names = [this, right],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
 						load_local	0
-						field_store	0
+						field_store	1
 						load_const	0
 						return
 					]
@@ -91,12 +91,12 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [left],
+					names = [this, left],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
-						field_load	0
+						field_load	1
 						return
 					]
 				},
@@ -108,12 +108,12 @@ function
 					local_vars = [],
 					local_ref_vars = [],
 					free_vars = [this],
-					names = [right],
+					names = [this, right],
 					instructions = 
 					[
 						push_ref	0
 						load_ref
-						field_load	0
+						field_load	1
 						return
 					]
 				}
@@ -128,27 +128,27 @@ function
 			[
 				alloc_record
 				dup
-				dup
-				dup
-				dup
-				dup
-				dup
 				load_const	0
 				field_store	0
+				dup
 				load_const	0
 				field_store	1
+				dup
 				load_func	0
 				push_ref	0
 				alloc_closure	1
 				field_store	2
+				dup
 				load_func	1
 				push_ref	0
 				alloc_closure	1
 				field_store	3
+				dup
 				load_func	2
 				push_ref	0
 				alloc_closure	1
 				field_store	4
+				dup
 				load_func	3
 				push_ref	0
 				alloc_closure	1
@@ -163,8 +163,8 @@ function
 			functions = [],
 			constants = [0, None, 1],
 			parameter_count = 2,
-			local_vars = [depth, node, newLeft, newRight],
-			local_ref_vars = [],
+			local_vars = [depth, node, newRight, newLeft],
+			local_ref_vars = [depth, newLeft, newRight],
 			free_vars = [],
 			names = [Node, setLeft, setRight, populate, getLeft, getRight],
 			instructions = 
@@ -174,28 +174,27 @@ function
 				swap
 				geq
 				not
-				if	4
+				if	3
 				load_const	1
 				return
-				goto	35
 				load_local	0
 				load_const	2
 				sub
 				store_local	0
 				load_global	0
 				call	0
-				store_local	2
+				store_local	3
 				load_global	0
 				call	0
-				store_local	3
+				store_local	2
 				load_local	1
 				field_load	1
-				load_local	2
+				load_local	3
 				call	1
 				pop
 				load_local	1
 				field_load	2
-				load_local	3
+				load_local	2
 				call	1
 				pop
 				load_global	3
@@ -212,22 +211,23 @@ function
 				call	0
 				call	2
 				pop
+				goto	1
 				load_const	1
 				return
 			]
 		}
 	],
-	constants = [16, "Garbage collector bench1.mit", "Creating a long-lived binary tree of depth "],
+	constants = [16, "Garbage collector bench1.mit", "Creating a long-lived binary tree of depth ", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
 	free_vars = [],
-	names = [kLongLivedTreeDepth, Node, populate, root, print, input, intcast],
+	names = [kLongLivedTreeDepth, Node, populate, print, root, input, intcast],
 	instructions = 
 	[
 		load_func	0
 		alloc_closure	0
-		store_global	4
+		store_global	3
 		load_func	1
 		alloc_closure	0
 		store_global	5
@@ -242,11 +242,11 @@ function
 		load_func	4
 		alloc_closure	0
 		store_global	2
-		load_global	4
+		load_global	3
 		load_const	1
 		call	1
 		pop
-		load_global	4
+		load_global	3
 		load_const	2
 		load_global	0
 		add
@@ -254,11 +254,13 @@ function
 		pop
 		load_global	1
 		call	0
-		store_global	3
+		store_global	4
 		load_global	2
 		load_global	0
-		load_global	3
+		load_global	4
 		call	2
 		pop
+		load_const	3
+		return
 	]
 }

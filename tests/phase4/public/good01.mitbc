@@ -57,7 +57,7 @@ function
 			]
 		}
 	],
-	constants = [5, 7],
+	constants = [5, 7, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -81,5 +81,7 @@ function
 		load_func	3
 		alloc_closure	0
 		store_global	2
+		load_const	2
+		return
 	]
 }

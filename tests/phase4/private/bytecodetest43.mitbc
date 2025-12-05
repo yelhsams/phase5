@@ -42,7 +42,7 @@ function
 			]
 		}
 	],
-	constants = [1, 0, "here"],
+	constants = [1, 0, "here", None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -63,10 +63,13 @@ function
 		load_const	1
 		gt
 		not
-		if	5
+		if	6
 		load_global	0
 		load_const	2
 		call	1
 		pop
+		goto	1
+		load_const	3
+		return
 	]
 }

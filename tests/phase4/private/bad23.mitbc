@@ -42,7 +42,7 @@ function
 			]
 		}
 	],
-	constants = [1, true],
+	constants = [1, true, None],
 	parameter_count = 0,
 	local_vars = [],
 	local_ref_vars = [],
@@ -69,5 +69,7 @@ function
 		add
 		call	1
 		pop
+		load_const	2
+		return
 	]
 }
