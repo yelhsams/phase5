@@ -260,21 +260,14 @@ static void constant_propagate_one(bytecode::Function *fn) {
       if (local_idx >= 0 && local_idx < (int)locals.size()) {
         ConstantValue cv = locals[local_idx];
         stack.push_back(cv);
-        // If we know the value, replace with LoadConst
-        if (cv.is_known()) {
-          int const_idx = find_or_create_constant(fn, cv);
-          if (const_idx >= 0) {
-            new_instructions.push_back(
-                Instruction(Operation::LoadConst, const_idx));
-            replaced = true;
-          }
-        }
+        // NOTE: We do NOT replace LoadLocal with LoadConst here because
+        // this simple linear pass doesn't do proper dataflow analysis.
+        // In a loop, locals may be modified and we'd incorrectly use
+        // the pre-loop value. We still track the value for folding later ops.
       } else {
         stack.push_back(ConstantValue::unknown());
       }
-      if (!replaced) {
-        new_instructions.push_back(inst);
-      }
+      new_instructions.push_back(inst);
       break;
     }
 
@@ -302,6 +295,11 @@ static void constant_propagate_one(bytecode::Function *fn) {
     case Operation::And:
     case Operation::Or: {
       // Binary operations: pop two values, compute result, push result
+      // NOTE: We track the result for downstream operations, but we do NOT
+      // replace the operation with LoadConst. In stack-based bytecode, replacing
+      // "load_const X; load_const Y; add" with "load_const X; load_const Y; load_const Z"
+      // corrupts the stack (leaves X and Y on stack). Proper constant folding
+      // would need peephole optimization to remove operand loads too.
       if (stack.size() >= 2) {
         ConstantValue b = stack.back();
         stack.pop_back();
@@ -310,16 +308,6 @@ static void constant_propagate_one(bytecode::Function *fn) {
 
         ConstantValue result = eval_binary(inst.operation, a, b);
         stack.push_back(result);
-
-        // If we can fold, replace with LoadConst
-        if (result.is_known()) {
-          int const_idx = find_or_create_constant(fn, result);
-          if (const_idx >= 0) {
-            new_instructions.push_back(
-                Instruction(Operation::LoadConst, const_idx));
-            replaced = true;
-          }
-        }
       } else {
         // Can't track stack, mark as unknown
         if (!stack.empty())
@@ -328,37 +316,25 @@ static void constant_propagate_one(bytecode::Function *fn) {
           stack.pop_back();
         stack.push_back(ConstantValue::unknown());
       }
-      if (!replaced) {
-        new_instructions.push_back(inst);
-      }
+      new_instructions.push_back(inst);
       break;
     }
 
     case Operation::Neg:
     case Operation::Not: {
       // Unary operations: pop one value, compute result, push result
+      // Same issue as binary ops - we can't safely replace without removing
+      // the operand load instruction, so just track for downstream use.
       if (!stack.empty()) {
         ConstantValue a = stack.back();
         stack.pop_back();
 
         ConstantValue result = eval_unary(inst.operation, a);
         stack.push_back(result);
-
-        // If we can fold, replace with LoadConst
-        if (result.is_known()) {
-          int const_idx = find_or_create_constant(fn, result);
-          if (const_idx >= 0) {
-            new_instructions.push_back(
-                Instruction(Operation::LoadConst, const_idx));
-            replaced = true;
-          }
-        }
       } else {
         stack.push_back(ConstantValue::unknown());
       }
-      if (!replaced) {
-        new_instructions.push_back(inst);
-      }
+      new_instructions.push_back(inst);
       break;
     }
 
@@ -427,27 +403,15 @@ static void constant_propagate_one(bytecode::Function *fn) {
       // stack more precisely
 
       // For If, we might be able to optimize if the condition is constant
-      if (inst.operation == Operation::If && !stack.empty()) {
-        ConstantValue cond = stack.back();
-        stack.pop_back();
-        if (cond.is_boolean()) {
-          // If condition is constant, we can replace with Goto or remove
-          if (cond.bool_val) {
-            // Condition is true, convert to unconditional jump
-            int offset = inst.operand0.value();
-            new_instructions.push_back(Instruction(Operation::Goto, offset));
-            replaced = true;
-          } else {
-            // Condition is false, remove the jump (fall through)
-            replaced = true;
-          }
-        } else {
-          // Condition unknown, keep original
-          new_instructions.push_back(inst);
-        }
-      } else {
-        new_instructions.push_back(inst);
-      }
+      // NOTE: This optimization is DISABLED because it's unsafe without also
+      // removing the instruction that produces the condition value. When we
+      // remove an If or convert it to Goto, the condition value is still on
+      // the stack if it was produced by a preceding instruction (like LoadConst).
+      // A proper fix would require peephole optimization to also remove the
+      // condition-producing instruction.
+      //
+      // For now, we just keep all If instructions as-is:
+      new_instructions.push_back(inst);
 
       // Reset stack tracking for control flow
       if (inst.operation == Operation::Goto ||

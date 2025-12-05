@@ -5,6 +5,7 @@
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 namespace bytecode::opt_deadcode {
 
@@ -77,19 +78,32 @@ static std::set<size_t> find_reachable_instructions(
   return reachable;
 }
 
-// Find which local variables are read (used)
-static std::unordered_set<int>
+// Find which local variables are read (used) and whether reference operations exist
+// Returns (used_set, has_references)
+// If has_references is true, we cannot safely eliminate dead stores because
+// PushReference operands are indices into local_ref_vars_, not local_vars_.
+static std::pair<std::unordered_set<int>, bool>
 find_used_locals(const std::vector<Instruction> &instructions) {
   std::unordered_set<int> used;
+  bool has_references = false;
 
   for (const Instruction &inst : instructions) {
     switch (inst.operation) {
-    case Operation::LoadLocal:
-    case Operation::PushReference: {
+    case Operation::LoadLocal: {
       // Reading a local variable
       if (inst.operand0.has_value()) {
         used.insert(inst.operand0.value());
       }
+      break;
+    }
+
+    case Operation::PushReference:
+    case Operation::LoadReference:
+    case Operation::StoreReference: {
+      // Reference operations exist - operands are indices into local_ref_vars_
+      // or free_vars_, NOT local_vars_. We can't safely track which locals are
+      // used through references, so disable dead store elimination.
+      has_references = true;
       break;
     }
 
@@ -104,7 +118,7 @@ find_used_locals(const std::vector<Instruction> &instructions) {
     }
   }
 
-  return used;
+  return {used, has_references};
 }
 
 // Find which constants are used
@@ -205,53 +219,68 @@ static void eliminate_dead_code_one(bytecode::Function *fn) {
   fn->instructions = std::move(new_instructions);
 
   // Step 4: Find used locals and remove dead stores
-  std::unordered_set<int> used_locals = find_used_locals(fn->instructions);
+  auto [used_locals, has_references] = find_used_locals(fn->instructions);
 
-  // Rebuild instructions, removing dead stores
-  // A store is dead if:
-  // 1. The local is never read after the store (before being overwritten)
-  // 2. The local is not a parameter (parameters might be used externally)
-  std::vector<Instruction> final_instructions;
-  final_instructions.reserve(fn->instructions.size());
+  // Only perform dead store elimination if the function doesn't use reference
+  // variables. Reference operations (PushReference/LoadReference/StoreReference)
+  // use indices into local_ref_vars_, not local_vars_, so we can't reliably
+  // track which locals are accessed through references.
+  if (!has_references) {
+    // Rebuild instructions, removing dead stores
+    // A store is dead if:
+    // 1. The local is never read after the store (before being overwritten)
+    // 2. The local is not a parameter (parameters might be used externally)
+    std::vector<Instruction> final_instructions;
+    final_instructions.reserve(fn->instructions.size());
 
-  // Track last write to each local
-  std::unordered_map<int, size_t> last_write;
-  std::unordered_set<int> params;
-  for (size_t i = 0; i < fn->parameter_count_ && i < fn->local_vars_.size(); ++i) {
-    params.insert(i);
-  }
+    // Track last write to each local
+    std::unordered_map<int, size_t> last_write;
+    std::unordered_set<int> params;
+    for (size_t i = 0; i < fn->parameter_count_ && i < fn->local_vars_.size();
+         ++i) {
+      params.insert(i);
+    }
 
-  for (size_t i = 0; i < fn->instructions.size(); ++i) {
-    const Instruction &inst = fn->instructions[i];
-    bool keep = true;
+    for (size_t i = 0; i < fn->instructions.size(); ++i) {
+      const Instruction &inst = fn->instructions[i];
+      bool keep = true;
+      bool replace_with_pop = false;
 
-    if (inst.operation == Operation::StoreLocal && inst.operand0.has_value()) {
-      int local_idx = inst.operand0.value();
+      if (inst.operation == Operation::StoreLocal && inst.operand0.has_value()) {
+        int local_idx = inst.operand0.value();
 
-      // Don't remove stores to parameters
-      if (params.count(local_idx)) {
-        keep = true;
-      } else if (!used_locals.count(local_idx)) {
-        // Local is never read - this store is dead
-        keep = false;
-      } else {
-        // Check if there's a later write before any read
-        // (simple approach: if this is the last write and local is used, keep it)
-        // For simplicity, we'll keep stores if the local is used anywhere
-        keep = true;
+        // Don't remove stores to parameters
+        if (params.count(local_idx)) {
+          keep = true;
+        } else if (!used_locals.count(local_idx)) {
+          // Local is never read - this store is dead.
+          // BUT: StoreLocal pops a value from the stack, so we need to replace
+          // it with Pop to maintain stack balance, not just remove it.
+          keep = false;
+          replace_with_pop = true;
+        } else {
+          // Check if there's a later write before any read
+          // (simple approach: if this is the last write and local is used,
+          // keep it) For simplicity, we'll keep stores if the local is used
+          // anywhere
+          keep = true;
+        }
+
+        if (keep) {
+          last_write[local_idx] = i;
+        }
       }
 
       if (keep) {
-        last_write[local_idx] = i;
+        final_instructions.push_back(inst);
+      } else if (replace_with_pop) {
+        // Replace dead store with pop to maintain stack balance
+        final_instructions.push_back(Instruction(Operation::Pop, std::nullopt));
       }
     }
 
-    if (keep) {
-      final_instructions.push_back(inst);
-    }
+    fn->instructions = std::move(final_instructions);
   }
-
-  fn->instructions = std::move(final_instructions);
 
   // Step 5: Remove unused constants
   std::unordered_set<int> used_constants =
