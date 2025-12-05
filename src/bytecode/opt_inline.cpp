@@ -16,8 +16,8 @@ static bool is_inlinable(Function *fn) {
   if (!fn->functions_.empty())
     return false;
 
-  // Function is small enough
-  if (fn->instructions.size() > 40)
+  // Function is small enough - increased threshold for more aggressive inlining
+  if (fn->instructions.size() > 100)
     return false;
 
   // Must end with a Return instruction
@@ -165,8 +165,21 @@ void inline_functions(Function *func) {
   for (Function *child : func->functions_)
     inline_functions(child);
 
-  // Then inline into this function
-  inline_one(func);
+  // Run multiple passes of inlining until no more changes or limit reached
+  // This handles cases where inlined code contains more inlinable calls
+  const int MAX_PASSES = 3;
+  const size_t MAX_CODE_SIZE = 10000; // Prevent code explosion
+
+  for (int pass = 0; pass < MAX_PASSES; ++pass) {
+    size_t old_size = func->instructions.size();
+    inline_one(func);
+
+    // Stop if no change or code is getting too large
+    if (func->instructions.size() == old_size ||
+        func->instructions.size() > MAX_CODE_SIZE) {
+      break;
+    }
+  }
 }
 
 } // namespace bytecode::opt_inline

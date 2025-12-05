@@ -353,6 +353,106 @@ static bool peephole_one_pass(Function *fn) {
           continue;
         }
       }
+
+      // Strength reduction: X op LoadConst -> simplified
+      // Pattern: ...; LoadConst 0; Mul -> Pop; LoadConst 0 (x * 0 = 0)
+      if (cv2 && cv2->kind == ConstVal::INT && cv2->i == 0 &&
+          code[i + 2].operation == Operation::Mul) {
+        old_to_new[i] = new_code.size();
+        new_code.push_back(Instruction(Operation::Pop, std::nullopt));
+        old_to_new[i + 1] = new_code.size();
+        old_to_new[i + 2] = new_code.size();
+        new_code.push_back(code[i + 1]); // Keep LoadConst 0
+        i += 3;
+        changed = true;
+        continue;
+      }
+
+      // Pattern: ...; LoadConst 1; Mul -> (just keep first operand, x * 1 = x)
+      if (cv2 && cv2->kind == ConstVal::INT && cv2->i == 1 &&
+          code[i + 2].operation == Operation::Mul) {
+        old_to_new[i] = new_code.size();
+        new_code.push_back(code[i]); // Keep first operand
+        old_to_new[i + 1] = new_code.size() - 1;
+        old_to_new[i + 2] = new_code.size() - 1;
+        i += 3;
+        changed = true;
+        continue;
+      }
+
+      // Pattern: ...; LoadConst 0; Add -> (just keep first operand, x + 0 = x)
+      if (cv2 && cv2->kind == ConstVal::INT && cv2->i == 0 &&
+          code[i + 2].operation == Operation::Add) {
+        old_to_new[i] = new_code.size();
+        new_code.push_back(code[i]);
+        old_to_new[i + 1] = new_code.size() - 1;
+        old_to_new[i + 2] = new_code.size() - 1;
+        i += 3;
+        changed = true;
+        continue;
+      }
+
+      // Pattern: ...; LoadConst 0; Sub -> (just keep first operand, x - 0 = x)
+      if (cv2 && cv2->kind == ConstVal::INT && cv2->i == 0 &&
+          code[i + 2].operation == Operation::Sub) {
+        old_to_new[i] = new_code.size();
+        new_code.push_back(code[i]);
+        old_to_new[i + 1] = new_code.size() - 1;
+        old_to_new[i + 2] = new_code.size() - 1;
+        i += 3;
+        changed = true;
+        continue;
+      }
+
+      // Pattern: ...; LoadConst 1; Div -> (just keep first operand, x / 1 = x)
+      if (cv2 && cv2->kind == ConstVal::INT && cv2->i == 1 &&
+          code[i + 2].operation == Operation::Div) {
+        old_to_new[i] = new_code.size();
+        new_code.push_back(code[i]);
+        old_to_new[i + 1] = new_code.size() - 1;
+        old_to_new[i + 2] = new_code.size() - 1;
+        i += 3;
+        changed = true;
+        continue;
+      }
+
+      // Strength reduction: LoadConst op X -> simplified
+      // Pattern: LoadConst 0; ...; Mul -> Pop; LoadConst 0 (0 * x = 0)
+      if (cv1 && cv1->kind == ConstVal::INT && cv1->i == 0 &&
+          code[i + 2].operation == Operation::Mul) {
+        old_to_new[i] = new_code.size();
+        new_code.push_back(code[i]); // Keep LoadConst 0
+        old_to_new[i + 1] = new_code.size();
+        new_code.push_back(Instruction(Operation::Pop, std::nullopt));
+        old_to_new[i + 2] = new_code.size() - 1;
+        i += 3;
+        changed = true;
+        continue;
+      }
+
+      // Pattern: LoadConst 1; ...; Mul -> keep second operand (1 * x = x)
+      if (cv1 && cv1->kind == ConstVal::INT && cv1->i == 1 &&
+          code[i + 2].operation == Operation::Mul) {
+        old_to_new[i] = new_code.size();
+        old_to_new[i + 1] = new_code.size();
+        new_code.push_back(code[i + 1]);
+        old_to_new[i + 2] = new_code.size() - 1;
+        i += 3;
+        changed = true;
+        continue;
+      }
+
+      // Pattern: LoadConst 0; ...; Add -> keep second operand (0 + x = x)
+      if (cv1 && cv1->kind == ConstVal::INT && cv1->i == 0 &&
+          code[i + 2].operation == Operation::Add) {
+        old_to_new[i] = new_code.size();
+        old_to_new[i + 1] = new_code.size();
+        new_code.push_back(code[i + 1]);
+        old_to_new[i + 2] = new_code.size() - 1;
+        i += 3;
+        changed = true;
+        continue;
+      }
     }
 
     // Pattern: LoadConst X; UnaryOp -> LoadConst Y
@@ -372,15 +472,21 @@ static bool peephole_one_pass(Function *fn) {
       }
     }
 
-    // Pattern: Not; Not -> (nothing)
-    // This one removes instructions entirely, which is tricky with jumps.
-    // Skip this pattern for now to be safe.
-
-    // Pattern: Dup; Pop -> (nothing)
-    // Skip for safety
-
-    // Pattern: Swap; Swap -> (nothing)
-    // Skip for safety
+    // Copy propagation: StoreLocal X; LoadLocal X -> Dup; StoreLocal X
+    // This avoids redundant load after store
+    if (i + 1 < code.size() &&
+        code[i].operation == Operation::StoreLocal &&
+        code[i + 1].operation == Operation::LoadLocal &&
+        code[i].operand0.value() == code[i + 1].operand0.value() &&
+        !is_target[i] && !is_target[i + 1]) {
+      old_to_new[i] = new_code.size();
+      new_code.push_back(Instruction(Operation::Dup, std::nullopt));
+      old_to_new[i + 1] = new_code.size();
+      new_code.push_back(code[i]); // StoreLocal X
+      i += 2;
+      changed = true;
+      continue;
+    }
 
     // No pattern matched, copy instruction
     old_to_new[i] = new_code.size();
