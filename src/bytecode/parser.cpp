@@ -30,7 +30,10 @@ bytecode::Function *bytecode::Parser::parse() {
   return function;
 }
 
-bool bytecode::Parser::is_eof() const { return pos >= tokens.size(); }
+bool bytecode::Parser::is_eof() const {
+  return pos >= tokens.size() ||
+         (pos < tokens.size() && tokens[pos].kind == TokenKind::EOF_TOKEN);
+}
 
 bool bytecode::Parser::check(TokenKind kind) const {
   return pos < tokens.size() && tokens[pos].kind == kind;
