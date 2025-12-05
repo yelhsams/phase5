@@ -303,6 +303,8 @@ private:
 
   // Allocation tracking for GC trigger
   size_t curr_heap_bytes = 0;
+  size_t last_gc_threshold = 0;
+  size_t gc_count = 0;
 
   // Singletons for commonly-used immutable values
   Value *none_singleton = nullptr;
@@ -311,10 +313,26 @@ private:
 
   // Wrapper for heap allocation that triggers GC periodically
   template <typename T, typename... Args> T *allocate(Args &&...args) {
-    curr_heap_bytes += sizeof(T);
-    if (curr_heap_bytes >= max_heap_bytes) {
+    // Estimate size including variable data for strings
+    size_t alloc_size = sizeof(T);
+    curr_heap_bytes += alloc_size;
+
+    // Trigger GC when we exceed threshold
+    // Use adaptive threshold: start at max_heap_bytes/4, grow after each GC
+    size_t gc_threshold = last_gc_threshold > 0
+        ? last_gc_threshold
+        : std::max(max_heap_bytes / 4, size_t(1024 * 1024));  // Start at 1MB or max/4
+
+    if (curr_heap_bytes >= gc_threshold && gc_threshold < max_heap_bytes) {
+      size_t before = curr_heap_bytes;
       maybe_gc();
-      curr_heap_bytes = 0;
+      gc_count++;
+
+      // After GC, estimate how much was freed
+      // Assume generational GC freed some young objects
+      // Set next threshold based on current usage + headroom
+      curr_heap_bytes = before / 2;  // Estimate: assume ~50% collected
+      last_gc_threshold = std::min(curr_heap_bytes * 2, max_heap_bytes);
     }
     return heap.allocate<T>(std::forward<Args>(args)...);
   }
@@ -1068,7 +1086,10 @@ private:
   op_AddR: {
     TaggedValue left = frame.locals[ip->src1];
     TaggedValue right = frame.locals[ip->src2];
-    if (is_integer(left) && is_integer(right)) {
+    // Fast path for tagged integers (most common case)
+    if (left.kind == TaggedValue::Kind::Integer && right.kind == TaggedValue::Kind::Integer) {
+      frame.locals[ip->dst] = TaggedValue::from_int(left.i + right.i);
+    } else if (is_integer(left) && is_integer(right)) {
       frame.locals[ip->dst] =
           TaggedValue::from_int(get_int(left) + get_int(right));
     } else if (is_string(left) || is_string(right)) {
@@ -1086,7 +1107,10 @@ private:
   op_SubR: {
     TaggedValue left = frame.locals[ip->src1];
     TaggedValue right = frame.locals[ip->src2];
-    if (is_integer(left) && is_integer(right)) {
+    // Fast path for tagged integers
+    if (left.kind == TaggedValue::Kind::Integer && right.kind == TaggedValue::Kind::Integer) {
+      frame.locals[ip->dst] = TaggedValue::from_int(left.i - right.i);
+    } else if (is_integer(left) && is_integer(right)) {
       frame.locals[ip->dst] =
           TaggedValue::from_int(get_int(left) - get_int(right));
     } else {
@@ -1101,7 +1125,10 @@ private:
   op_MulR: {
     TaggedValue left = frame.locals[ip->src1];
     TaggedValue right = frame.locals[ip->src2];
-    if (is_integer(left) && is_integer(right)) {
+    // Fast path for tagged integers
+    if (left.kind == TaggedValue::Kind::Integer && right.kind == TaggedValue::Kind::Integer) {
+      frame.locals[ip->dst] = TaggedValue::from_int(left.i * right.i);
+    } else if (is_integer(left) && is_integer(right)) {
       frame.locals[ip->dst] =
           TaggedValue::from_int(get_int(left) * get_int(right));
     } else {
@@ -1116,7 +1143,12 @@ private:
   op_DivR: {
     TaggedValue left = frame.locals[ip->src1];
     TaggedValue right = frame.locals[ip->src2];
-    if (is_integer(left) && is_integer(right)) {
+    // Fast path for tagged integers
+    if (left.kind == TaggedValue::Kind::Integer && right.kind == TaggedValue::Kind::Integer) {
+      if (right.i == 0)
+        throw IllegalArithmeticException("Division by zero");
+      frame.locals[ip->dst] = TaggedValue::from_int(left.i / right.i);
+    } else if (is_integer(left) && is_integer(right)) {
       int32_t ri = get_int(right);
       if (ri == 0)
         throw IllegalArithmeticException("Division by zero");
@@ -1132,7 +1164,10 @@ private:
 
   op_NegR: {
     TaggedValue left = frame.locals[ip->src1];
-    if (is_integer(left)) {
+    // Fast path for tagged integers
+    if (left.kind == TaggedValue::Kind::Integer) {
+      frame.locals[ip->dst] = TaggedValue::from_int(-left.i);
+    } else if (is_integer(left)) {
       frame.locals[ip->dst] = TaggedValue::from_int(-get_int(left));
     } else {
       throw IllegalCastException("Invalid operand types for negate");
@@ -1146,7 +1181,10 @@ private:
   op_GtR: {
     TaggedValue left = frame.locals[ip->src1];
     TaggedValue right = frame.locals[ip->src2];
-    if (is_integer(left) && is_integer(right)) {
+    // Fast path for tagged integers
+    if (left.kind == TaggedValue::Kind::Integer && right.kind == TaggedValue::Kind::Integer) {
+      frame.locals[ip->dst] = TaggedValue::from_bool(left.i > right.i);
+    } else if (is_integer(left) && is_integer(right)) {
       frame.locals[ip->dst] =
           TaggedValue::from_bool(get_int(left) > get_int(right));
     } else {
@@ -1161,7 +1199,10 @@ private:
   op_GeqR: {
     TaggedValue left = frame.locals[ip->src1];
     TaggedValue right = frame.locals[ip->src2];
-    if (is_integer(left) && is_integer(right)) {
+    // Fast path for tagged integers
+    if (left.kind == TaggedValue::Kind::Integer && right.kind == TaggedValue::Kind::Integer) {
+      frame.locals[ip->dst] = TaggedValue::from_bool(left.i >= right.i);
+    } else if (is_integer(left) && is_integer(right)) {
       frame.locals[ip->dst] =
           TaggedValue::from_bool(get_int(left) >= get_int(right));
     } else {
