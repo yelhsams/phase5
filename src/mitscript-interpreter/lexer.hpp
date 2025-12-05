@@ -12,12 +12,13 @@ namespace mitscript {
 
             std::vector<Token> lex();
     private:
-        std::string rest;
+        std::string input;
+        size_t pos;
         int current_line;
         int current_col;
 
         bool is_eof() const;
-        char peek() const;
+        char peek(size_t lookahead = 0) const;
         std::optional<Token> lex_chunk();
         std::string getNextContiguousString();
         void skip_ws_and_comments();
