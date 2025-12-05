@@ -47,100 +47,87 @@ namespace mitscript {
     struct ReturnSignal {Value* value;};
     std::string str(Value*);
     // Forward declarations
-    std::unordered_set<std::string> get_globals(Block* b);
-    std::unordered_set<std::string> get_globals(IfStatement* if_stmt);
-    std::unordered_set<std::string> get_globals(WhileLoop* while_stmt);
+    void collect_globals(Block* b, std::unordered_set<std::string>& globals);
+    void collect_globals(IfStatement* if_stmt, std::unordered_set<std::string>& globals);
+    void collect_globals(WhileLoop* while_stmt, std::unordered_set<std::string>& globals);
     // Forward declarations for variable collection helpers
-    std::unordered_set<std::string> get_vars(Block* b);
-    std::unordered_set<std::string> get_vars(IfStatement* if_stmt);
-    std::unordered_set<std::string> get_vars(WhileLoop* while_stmt);
-    std::unordered_set<std::string> get_vars(Assignment* assign_stmt);
+    void collect_vars(Block* b, std::unordered_set<std::string>& vars);
+    void collect_vars(IfStatement* if_stmt, std::unordered_set<std::string>& vars);
+    void collect_vars(WhileLoop* while_stmt, std::unordered_set<std::string>& vars);
+    void collect_vars(Assignment* assign_stmt, std::unordered_set<std::string>& vars);
 
     std::unordered_set<std::string> get_globals(Block* b) {
         std::unordered_set<std::string> globals;
+        collect_globals(b, globals);
+        return globals;
+    }
+
+    void collect_globals(Block* b, std::unordered_set<std::string>& globals) {
         for (const auto& statement_ptr : b->statements) {
             Statement* statement = statement_ptr.get();
             if (auto if_stmt = dynamic_cast<IfStatement*>(statement)) {
-                auto if_globals = get_globals(if_stmt);
-                globals.insert(if_globals.begin(), if_globals.end());
-
+                collect_globals(if_stmt, globals);
             } else if (auto while_stmt = dynamic_cast<WhileLoop*>(statement)) {
-                auto loop_globals = get_globals(while_stmt);
-                globals.insert(loop_globals.begin(), loop_globals.end());
+                collect_globals(while_stmt, globals);
             } else if (auto global_stmt = dynamic_cast<Global*>(statement)) {
                 globals.insert(global_stmt->name);
             } else if (auto block_stmt = dynamic_cast<Block*>(statement)) {
-                auto block_globals = get_globals(block_stmt);
-                globals.insert(block_globals.begin(), block_globals.end());
+                collect_globals(block_stmt, globals);
             }
         }
-        return globals;
     }
 
-
-    std::unordered_set<std::string> get_globals(IfStatement* if_stmt) {
-        std::unordered_set<std::string> globals;
+    void collect_globals(IfStatement* if_stmt, std::unordered_set<std::string>& globals) {
         if (if_stmt->then_block) {
-            auto then_globals = get_globals(if_stmt->then_block.get());
-            globals.insert(then_globals.begin(), then_globals.end());
+            collect_globals(if_stmt->then_block.get(), globals);
         }
         if (if_stmt->else_block) {
-            auto else_globals = get_globals(if_stmt->else_block.get());
-            globals.insert(else_globals.begin(), else_globals.end());
+            collect_globals(if_stmt->else_block.get(), globals);
         }
-        return globals;
     }
 
-    std::unordered_set<std::string> get_globals(WhileLoop* while_stmt) {
-        return get_globals(while_stmt->body.get());
+    void collect_globals(WhileLoop* while_stmt, std::unordered_set<std::string>& globals) {
+        collect_globals(while_stmt->body.get(), globals);
     }
 
     std::unordered_set<std::string> get_vars(Block* b) {
         std::unordered_set<std::string> vars;
+        collect_vars(b, vars);
+        return vars;
+    }
+
+    void collect_vars(Block* b, std::unordered_set<std::string>& vars) {
         for (const auto& statement_ptr : b->statements) {
             Statement* statement = statement_ptr.get();
             if (auto if_stmt = dynamic_cast<IfStatement*>(statement)) {
-                auto if_vars = get_vars(if_stmt);
-                vars.insert(if_vars.begin(), if_vars.end());
-
+                collect_vars(if_stmt, vars);
             } else if (auto while_stmt = dynamic_cast<WhileLoop*>(statement)) {
-                auto loop_vars = get_vars(while_stmt);
-                vars.insert(loop_vars.begin(), loop_vars.end());
-            } else if (auto assign_stmt = dynamic_cast<Assignment*>(statement)){
-                auto assignment_vars = get_vars(assign_stmt);
-                vars.insert(assignment_vars.begin(), assignment_vars.end());
+                collect_vars(while_stmt, vars);
+            } else if (auto assign_stmt = dynamic_cast<Assignment*>(statement)) {
+                collect_vars(assign_stmt, vars);
             } else if (auto block_stmt = dynamic_cast<Block*>(statement)) {
-                auto block_vars = get_vars(block_stmt);
-                vars.insert(block_vars.begin(), block_vars.end());
+                collect_vars(block_stmt, vars);
             }
         }
-        return vars;
     }
 
-
-    std::unordered_set<std::string> get_vars(IfStatement* if_stmt) {
-        std::unordered_set<std::string> vars;
+    void collect_vars(IfStatement* if_stmt, std::unordered_set<std::string>& vars) {
         if (if_stmt->then_block) {
-            auto then_vars = get_vars(if_stmt->then_block.get());
-            vars.insert(then_vars.begin(), then_vars.end());
+            collect_vars(if_stmt->then_block.get(), vars);
         }
         if (if_stmt->else_block) {
-            auto else_vars = get_vars(if_stmt->else_block.get());
-            vars.insert(else_vars.begin(), else_vars.end());
+            collect_vars(if_stmt->else_block.get(), vars);
         }
-        return vars;
     }
 
-    std::unordered_set<std::string> get_vars(WhileLoop* while_stmt) {
-        return get_vars(while_stmt->body.get());
+    void collect_vars(WhileLoop* while_stmt, std::unordered_set<std::string>& vars) {
+        collect_vars(while_stmt->body.get(), vars);
     }
 
-    std::unordered_set<std::string> get_vars(Assignment* assign_stmt) {
-        std::unordered_set<std::string> vars;
+    void collect_vars(Assignment* assign_stmt, std::unordered_set<std::string>& vars) {
         if (auto var_target = dynamic_cast<Variable*>(assign_stmt->target.get())) {
             vars.insert(var_target->name);
         }
-        return vars;
     }
 
 

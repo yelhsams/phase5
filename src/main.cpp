@@ -3,6 +3,7 @@
 #include "bytecode/opt_constprop.hpp"
 #include "bytecode/opt_deadcode.hpp"
 #include "bytecode/opt_inline.hpp"
+#include "bytecode/opt_licm.hpp"
 #include "bytecode/opt_peephole.hpp"
 #include "bytecode/parser.hpp"
 #include "bytecode/prettyprinter.hpp"
@@ -195,7 +196,12 @@ int main(int argc, char **argv) {
         bytecode::opt_peephole::peephole_optimize(bytecode);
       }
 
-      // bytecode::opt_inline::inline_functions(bytecode);
+      if (has_opt(command, "inline")) {
+        bytecode::opt_inline::inline_functions(bytecode);
+      }
+      if (has_opt(command, "licm")) {
+        bytecode::opt_licm::run(bytecode);
+      }
       vm::VM vm(command.mem);
       vm.run(bytecode);
     } catch (const std::exception &e) {
@@ -255,8 +261,12 @@ int main(int argc, char **argv) {
         bytecode::opt_peephole::peephole_optimize(bytecode_func);
       }
 
-      // Optimization: inlining
-      bytecode::opt_inline::inline_functions(bytecode_func);
+      if (has_opt(command, "inline") || has_opt(command, "all")) {
+        bytecode::opt_inline::inline_functions(bytecode_func);
+      }
+      if (has_opt(command, "licm") || has_opt(command, "all")) {
+        bytecode::opt_licm::run(bytecode_func);
+      }
 
       // Create VM and execute
       vm::VM vm(max_mem_mb);
