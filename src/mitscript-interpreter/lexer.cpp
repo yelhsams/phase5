@@ -6,8 +6,8 @@
 #include <optional>
 #include <sstream>
 #include <vector>
-#include <unordered_map>
 #include <set>
+#include <unordered_map>
 
 
 
@@ -58,8 +58,9 @@ void mitscript::Lexer::skip_ws_and_comments() {
             advance();
         }
 
-        if (!is_eof() && peek() == '/' && rest.size() > 1 && rest[1] == '/') {
-            advance(); advance();
+        if (!is_eof() && peek() == '/' && peek(1) == '/') {
+            advance();
+            advance();
             while (!is_eof() && peek() != '\n' && peek() != '\r') {
                 advance();
             }
@@ -72,31 +73,19 @@ void mitscript::Lexer::skip_ws_and_comments() {
 mitscript::Token mitscript::Lexer::make_error(const std::string &error_msg, int start_line, int start_col, int end_line, int end_col) {
     return mitscript::Token(mitscript::TokenKind::ERROR, error_msg, start_line, start_col, end_line, end_col);
 }
-
-bool isInt(const std::string &s) {
-    if (s.empty()) {
-        return false;
-    }
-    for (char c : s) {
-        if (!std::isdigit(c)) {
-            return false;
-        }
-    }
-    return true;
-}
-
 mitscript::Lexer::Lexer(const std::string &file_contents)
-    : rest(file_contents), current_line(1), current_col(1) {}
+    : input(file_contents), pos(0), current_line(1), current_col(1) {}
 
-char mitscript::Lexer::peek() const {
-    if (is_eof()) {
+char mitscript::Lexer::peek(size_t lookahead) const {
+    const size_t idx = pos + lookahead;
+    if (idx >= input.size()) {
         return '\0';
     }
-    return this->rest[0];
+    return input[idx];
 }
 
 bool mitscript::Lexer::is_eof() const {
-    return this->rest.empty();
+    return pos >= input.size();
 }
 std::string mitscript::Lexer::getNextContiguousString() {
 
@@ -105,58 +94,36 @@ std::string mitscript::Lexer::getNextContiguousString() {
     }
 
     std::string result;
-    while (!is_eof() && (std::isalnum(peek()) || peek() == '_')) {
-        result += peek();
+    while (!is_eof()) {
+        char c = peek();
+        if (!(std::isalnum(static_cast<unsigned char>(c)) || c == '_')) {
+            break;
+        }
+        result.push_back(c);
         advance();
     }
     return result;
 }
 
 void mitscript::Lexer::advance() {
-//     if (!is_eof()) {
-//         char c = this->rest[0];
-//         this->rest = this->rest.substr(1);
-
-//     if (rest[0] == '\r') {
-//         // CRLF -> one newline
-//         if (rest.size() >= 2 && rest[1] == '\n') {
-//             rest.erase(0, 2);
-//         } else {
-//             // lone CR -> also a newline
-//             rest.erase(0, 1);
-//     }
-//         ++current_line;
-//         current_col = 1;
-//         return;
-//     }
-
-
-//     if (c == '\n') {
-//         ++this->current_line;
-//         this->current_col = 1;
-//     } else {
-//         ++this->current_col;
-//     }
-// }
-
     if (is_eof()) return;
 
-    char c = this -> rest[0];
-    rest.erase(0, 1);
+    char c = input[pos++];
+
     if (c == '\r') {
-        if (rest.size() >= 1 && rest[0] == '\n') {
-            rest.erase(0, 1);
+        if (peek() == '\n') {
+            ++pos; // consume the '\n'
         }
-        current_line++;
+        ++current_line;
         current_col = 1;
         return;
     }
 
     if (c == '\n') {
-        current_line++;
+        ++current_line;
         current_col = 1;
     } else {
-        current_col++;
+        ++current_col;
     }
 }
 
@@ -245,12 +212,7 @@ std::optional<mitscript::Token> mitscript::Lexer::lex_number(int start_line, int
         number_literal += peek();
         advance();
     }
-    if (isInt(number_literal)) {
-        return mitscript::Token(mitscript::TokenKind::INT, number_literal, start_line, start_col, this->current_line, this->current_col);
-    } else {
-        std::string error_msg = "Invalid integer literal '" + number_literal + "'";
-        return make_error(error_msg, start_line, start_col, this->current_line, this->current_col);
-    }
+    return mitscript::Token(mitscript::TokenKind::INT, number_literal, start_line, start_col, this->current_line, this->current_col);
 }
 
 std::optional<mitscript::Token> mitscript::Lexer::lex_identifier_or_keyword(int start_line, int start_col) {
@@ -268,6 +230,7 @@ std::optional<mitscript::Token> mitscript::Lexer::lex_identifier_or_keyword(int 
 
 std::vector<mitscript::Token> mitscript::Lexer::lex() {
     std::vector<mitscript::Token> tokens;
+    tokens.reserve(input.size() / 4 + 8);
     while (true) {
         skip_ws_and_comments();
 
@@ -295,8 +258,10 @@ std::vector<mitscript::Token> mitscript::Lexer::lex() {
         }
 
         else {
-            if (rest.size() >= 2) {
-                std::string next_two_chars = rest.substr(0, 2);
+            if (peek(1) != '\0') {
+                std::string next_two_chars;
+                next_two_chars.push_back(c);
+                next_two_chars.push_back(peek(1));
                 auto two_char_op = string_to_token.find(next_two_chars);
                 if (two_char_op != string_to_token.end()) {
                     advance();
