@@ -308,6 +308,11 @@ private:
   // Allocation tracking for GC trigger
   size_t curr_heap_bytes = 0;
 
+  // Thresholds for generational GC
+  static constexpr size_t MINOR_GC_THRESHOLD = 64 * 1024;   // 64KB triggers minor GC
+  static constexpr size_t FULL_GC_THRESHOLD = 1024 * 1024;  // 1MB triggers full GC consideration
+  size_t bytes_since_last_gc = 0;
+
   // Singletons for commonly-used immutable values
   Value *none_singleton = nullptr;
   Value *bool_true_singleton = nullptr;
@@ -316,10 +321,20 @@ private:
   // Wrapper for heap allocation that triggers GC periodically
   template <typename T, typename... Args> T *allocate(Args &&...args) {
     curr_heap_bytes += sizeof(T);
-    if (curr_heap_bytes >= max_heap_bytes) {
+    bytes_since_last_gc += sizeof(T);
+
+    // Trigger minor GC frequently for young generation
+    if (bytes_since_last_gc >= MINOR_GC_THRESHOLD) {
       maybe_gc();
-      curr_heap_bytes = 0;
+      bytes_since_last_gc = 0;
     }
+
+    // Also check max heap limit
+    if (curr_heap_bytes >= max_heap_bytes) {
+      force_full_gc();
+      curr_heap_bytes = heap.total_bytes();
+    }
+
     return heap.allocate<T>(std::forward<Args>(args)...);
   }
 
@@ -1399,10 +1414,8 @@ private:
     std::cout << tagged_to_string(tv);
   }
 
-  void maybe_gc() {
-    // Collect root set: globals + all stack frames' locals + all operand stacks
-    std::vector<Collectable *> roots;
-
+  // Collect root set for GC
+  void collect_roots(std::vector<Collectable *>& roots) {
     // Add globals
     for (auto &[name, val] : globals) {
       if (val.kind == TaggedValue::Kind::HeapPtr && val.ptr)
@@ -1440,9 +1453,24 @@ private:
           roots.push_back(ref);
       }
     }
+  }
 
-    // Run GC
+  // Run adaptive GC (prefers minor GC for better performance)
+  void maybe_gc() {
+    std::vector<Collectable *> roots;
+    collect_roots(roots);
+
+    // Use adaptive GC policy from heap (prefers minor GC)
     heap.gc(roots.begin(), roots.end());
+  }
+
+  // Force a full GC when we hit memory limits
+  void force_full_gc() {
+    std::vector<Collectable *> roots;
+    collect_roots(roots);
+
+    // Always run full GC when forced
+    heap.full_gc(roots.begin(), roots.end());
   }
 
   // helper function for optimization execute_function
@@ -2268,6 +2296,7 @@ public:
     none_singleton = heap.allocate<None>();
     bool_true_singleton = heap.allocate<Boolean>(true);
     bool_false_singleton = heap.allocate<Boolean>(false);
+
   }
 
   void run(bytecode::Function *main_func) {
