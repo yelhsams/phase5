@@ -1,0 +1,9 @@
+x = 1;
+f = fun(){
+    if (false) {
+        global x;
+    }
+    x = 2;
+};
+f();
+print(x);         // expect 2

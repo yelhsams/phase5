@@ -1,0 +1,10 @@
+x = 5;
+
+x = {
+    hello: 2;
+    world: 4;
+};
+
+print(x.hello);
+x = fun(){};
+print(x["world"]);

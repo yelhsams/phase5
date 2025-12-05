@@ -1,0 +1,17 @@
+x = 0;
+
+bump = fun(tag) {
+    global x;
+  print("eval " + tag + ", x=" + x);
+  x = x + 1;
+  return x;
+};
+
+f = fun(a, b, c) {
+  print("args: " + a + ", " + b + ", " + c);
+};
+
+// Arguments must be evaluated in order: bump("A"), then bump("B"), then bump("C")
+f(bump("A"), bump("B"), bump("C"));
+
+print("final x=" + x);

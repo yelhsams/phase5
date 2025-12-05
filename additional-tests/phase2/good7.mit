@@ -1,0 +1,17 @@
+x = 0;
+f = fun(){
+  while(false){
+    if (true) {
+        if (false) {
+            if (true) {
+                if (false) {
+                    {{{{{global x;}}}}}
+                }
+            }
+        }
+    }
+    }
+  x = 1;
+};
+f();
+print(x);    // expect 1

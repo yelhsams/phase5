@@ -1,0 +1,9 @@
+y = 5;
+
+hello = fun(yur, foo) {
+    x = 7;
+    return x;
+};
+
+print(x);
+print(y);

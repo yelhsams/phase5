@@ -1,0 +1,6 @@
+1 (
+1 IDENTIFIER x
+1 )
+1 .
+1 IDENTIFIER y
+1 ;

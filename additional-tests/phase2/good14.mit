@@ -1,0 +1,39 @@
+print("== Integers ==");
+print(1 == 1);       // true
+print(1 == 2);       // false
+
+print("== Strings ==");
+print("a" == "a");   // true
+print("a" == "b");   // false
+
+print("== Booleans ==");
+print(true == true); // true
+print(true == false);// false
+
+print("== None ==");
+print(None == None); // true
+
+print("== Cross-type ==");
+print(1 == "1");     // false
+print(true == 1);    // false
+print(None == 0);    // false
+
+print("== Records ==");
+r1 = {x: 1;};
+r2 = {x: 1;};
+r3 = r1;
+print(r1 == r2);     // false (different records, even if same contents)
+print(r1 == r3);     // true  (alias)
+
+print("== Functions ==");
+f1 = fun(){ return 1; };
+f2 = fun(){ return 1; };
+f3 = f1;
+print(f1 == f2);     // false (different closures)
+print(f1 == f3);     // true
+
+print("== Native Functions ==");
+print(input == input);       // true
+print(input == intcast);     // false
+alias_input = input;
+print(alias_input == input); // true

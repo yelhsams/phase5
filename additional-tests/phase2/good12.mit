@@ -1,0 +1,31 @@
+print("Hello");
+
+oldprint = print;
+print = fun(s) {
+  oldprint("WRAP " + s);
+};
+print("Hello");
+
+also_input = input;
+print(input == input);     // true
+print(input == intcast);   // false
+print(also_input == input);// true
+
+input = fun(){ return "fake"; };
+print(also_input == input);// false (old vs new)
+print(input == input);     // true
+
+ic = intcast;
+print(ic == intcast);      // true
+intcast = fun(s){ return 42; };
+print(ic == intcast);      // false
+
+f = fun(){
+  print = oldprint;        // local variable named 'print' (no global decl)
+  print("inner");          // uses oldprint locally
+};
+f();
+print("after");            // still wrapped
+
+print = oldprint;
+print("restored");

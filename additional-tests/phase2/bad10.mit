@@ -1,0 +1,7 @@
+x = {
+    hello : 1;
+    world : 1;
+};
+
+y = 7;
+print(x < y);

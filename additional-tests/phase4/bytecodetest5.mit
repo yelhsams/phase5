@@ -1,0 +1,45 @@
+// Test 5: Functions
+print("Test 5: Functions");
+
+// Function with no parameters
+greet = fun() {
+    print("Hello, World!");
+    return None;
+};
+greet();
+
+// Function with one parameter
+square = fun(x) {
+    return x * x;
+};
+print(square(5));
+print(square(7));
+
+// Function with multiple parameters
+add = fun(a, b) {
+    return a + b;
+};
+print(add(3, 4));
+print(add(10, 20));
+
+// Function with conditionals
+max = fun(a, b) {
+    if (a > b) {
+        return a;
+    } else {
+        return b;
+    }
+};
+print(max(15, 10));
+print(max(5, 25));
+
+// Recursive function
+factorial = fun(n) {
+    if (n <= 1) {
+        return 1;
+    } else {
+        return n * factorial(n - 1);
+    }
+};
+print(factorial(5));
+print(factorial(6));

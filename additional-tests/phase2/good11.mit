@@ -1,0 +1,20 @@
+x = 0;
+
+bump = fun(tag, ret) {
+    global x; 
+  print("eval " + tag + ", x=" + x);
+  x = x + 1;
+  return ret;
+};
+
+// Each field expression should be evaluated in order: a, then b, then c
+r = {
+  a: bump("a", 10);
+  b: bump("b", 20);
+  c: bump("c", 30);
+};
+
+print(r.a);
+print(r.b);
+print(r.c);
+print("final x=" + x);

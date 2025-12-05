@@ -1,0 +1,49 @@
+// Test 7: String operations and casting
+print("Test 7: Strings");
+
+// String concatenation
+s1 = "Hello";
+s2 = "World";
+print(s1 + " " + s2);
+
+// String + number concatenation (automatic casting)
+age = 25;
+message = "Age: " + age;
+print(message);
+
+// Number + string concatenation
+result = 100 + " points";
+print(result);
+
+// Boolean to string
+flag = true;
+print("Flag is: " + flag);
+
+// None to string
+val = None;
+print("Value: " + val);
+
+// Function to string
+f = fun(x) { return x; };
+print("Function: " + f);
+
+// Record to string
+rec = { x: 10; y: 20; };
+print("Record: " + rec);
+
+// Using intcast
+numStr = "42";
+num = intcast(numStr);
+print(num);
+print(num + 8);
+
+// Comparison operators with strings
+if ("abc" == "abc") {
+    print("Strings are equal");
+}
+
+if ("hello" == "world") {
+    print("Should not print");
+} else {
+    print("Strings are different");
+}

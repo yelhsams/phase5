@@ -1,0 +1,26 @@
+// Test 4: While loops
+print("Test 4: Loops");
+
+// Simple counting loop
+i = 0;
+while (i < 5) {
+    print(i);
+    i = i + 1;
+}
+
+// Countdown loop
+j = 10;
+while (j > 0) {
+    print(j);
+    j = j - 1;
+}
+
+// Sum calculation
+sum = 0;
+k = 1;
+while (k <= 10) {
+    sum = sum + k;
+    k = k + 1;
+}
+print("Sum: ");
+print(sum);

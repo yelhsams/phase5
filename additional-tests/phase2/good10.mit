@@ -1,0 +1,12 @@
+x = {
+    hello : 1;
+    world : 1;
+};
+
+y = {
+    hello : 1;
+    world : 1;
+};
+
+
+print((x == y));

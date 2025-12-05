@@ -1,0 +1,38 @@
+x = 0;
+
+bumpFactory = fun(n) {
+  // Returns a function that:
+  //  - declares x as global for its own frame
+  //  - increments x by n
+  //  - prints the new value
+  //  - returns itself so you can chain calls like g()()()
+  g = fun() {
+    global x;
+    x = x + n;
+    print("inc " + n + " -> x=" + x);
+    return g;
+  };
+  return g;
+};
+
+chain = fun() {
+  print("start x=" + x);
+  a = bumpFactory(1);
+  b = bumpFactory(2);
+  c = bumpFactory(3);
+
+  // Return a function that performs a sequence of calls, then
+  // returns another bump function for further chaining.
+  return fun() {
+    a()();   // +1 twice
+    b();     // +2 once
+    c()();   // +3 twice
+    return bumpFactory(4); // returns a self-returning function
+  };
+};
+
+print(">>> First chain call");
+h = chain();   // prints start line, returns a function
+k = h();       // performs a()(), b(), c()() and returns bumpFactory(4)
+k()()();       // three chained calls: +4 three times
+print("x now = " + x);

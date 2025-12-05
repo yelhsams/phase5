@@ -1,0 +1,6 @@
+x = 5;
+z = 0;
+print("hello world");
+y = x / z;
+print(y);
+print("hello world");

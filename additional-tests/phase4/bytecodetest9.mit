@@ -1,0 +1,62 @@
+// Test 9: Global variables
+print("Test 9: Globals");
+
+globalCounter = 0;
+
+increment = fun() {
+    global globalCounter;
+    globalCounter = globalCounter + 1;
+    return None;
+};
+
+decrement = fun() {
+    global globalCounter;
+    globalCounter = globalCounter - 1;
+    return None;
+};
+
+print(globalCounter);
+increment();
+print(globalCounter);
+increment();
+print(globalCounter);
+decrement();
+print(globalCounter);
+
+// Multiple globals
+x = 10;
+y = 20;
+
+modifyGlobals = fun() {
+    global x;
+    global y;
+    x = x * 2;
+    y = y * 2;
+    return None;
+};
+
+print(x);
+print(y);
+modifyGlobals();
+print(x);
+print(y);
+
+// Global in nested function
+total = 0;
+
+addToTotal = fun(n) {
+    global total;
+    addN = fun() {
+        global total;
+        total = total + n;
+        return None;
+    };
+    addN();
+    return None;
+};
+
+print(total);
+addToTotal(5);
+print(total);
+addToTotal(10);
+print(total);

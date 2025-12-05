@@ -1,0 +1,54 @@
+// Test 8: Closures and nested functions
+print("Test 8: Closures");
+
+// Simple closure
+makeCounter = fun() {
+    count = 0;
+    return fun() {
+        count = count + 1;
+        return count;
+    };
+};
+
+counter1 = makeCounter();
+print(counter1());
+print(counter1());
+print(counter1());
+
+counter2 = makeCounter();
+print(counter2());
+print(counter2());
+
+// Closure with parameter
+makeAdder = fun(x) {
+    return fun(y) {
+        return x + y;
+    };
+};
+
+add5 = makeAdder(5);
+add10 = makeAdder(10);
+print(add5(3));
+print(add10(3));
+print(add5(7));
+
+// Closure capturing multiple variables
+makeMultiplier = fun(a, b) {
+    return fun(x) {
+        return (a + b) * x;
+    };
+};
+
+mult = makeMultiplier(2, 3);
+print(mult(4));
+print(mult(10));
+
+// Nested function scope
+outer = fun(x) {
+    y = x * 2;
+    inner = fun(z) {
+        return x + y + z;
+    };
+    return inner(5);
+};
+print(outer(3));

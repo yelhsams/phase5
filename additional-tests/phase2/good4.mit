@@ -1,0 +1,4 @@
+x = 5;
+f = fun(){ x = 7; };
+f();
+print(x);  // expect 5

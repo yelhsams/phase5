@@ -1,0 +1,48 @@
+// Test 6: Records and field access
+print("Test 6: Records");
+
+// Create a simple record
+person = {
+    name: "Bob";
+    age: 25;
+};
+print(person.name);
+print(person.age);
+
+// Modify record fields
+person.age = 26;
+print(person.age);
+
+// Add new field
+person.city = "Boston";
+print(person.city);
+
+// Nested records
+company = {
+    name: "TechCorp";
+    ceo: {
+        name: "Jane";
+        age: 45;
+    };
+};
+print(company.name);
+print(company.ceo.name);
+print(company.ceo.age);
+
+// Index access with strings
+key = "name";
+print(person[key]);
+
+// Record with function
+counter = {
+    value: 0;
+    increment: fun() {
+        counter.value = counter.value + 1;
+        return None;
+    };
+};
+print(counter.value);
+counter.increment();
+print(counter.value);
+counter.increment();
+print(counter.value);

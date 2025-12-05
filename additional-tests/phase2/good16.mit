@@ -1,0 +1,134 @@
+// LRU Cache in MITScript
+// Implementation detail: keep all mutable state in a record `st` and mutate its fields.
+
+Node = fun(k, v) {
+  return { key: k; value: v; prev: None; next: None; };
+};
+
+attach_after = fun(base, node) {
+  // Insert node right after base
+  node.prev = base;
+  node.next = base.next;
+  base.next.prev = node;
+  base.next = node;
+};
+
+detach = fun(node) {
+  // Remove node from its list
+  left = node.prev;
+  right = node.next;
+  left.next = right;
+  right.prev = left;
+  node.prev = None;
+  node.next = None;
+};
+
+LRUCache = fun(capacity) {
+  // All state lives in this record so inner functions can mutate via heap updates.
+  st = {
+    map: {};                  // key(string) -> node
+    head: Node(-1, -1);       // sentinel head (MRU side)
+    tail: Node(-1, -1);       // sentinel tail (LRU side)
+    capacity: capacity;
+    size: 0;
+  };
+
+  st.head.next = st.tail;
+  st.tail.prev = st.head;
+
+  move_to_front = fun(node) {
+    detach(node);
+    attach_after(st.head, node);
+  };
+
+  evict_if_needed = fun() {
+    if (st.size > st.capacity) {
+      victim = st.tail.prev;            // LRU
+      detach(victim);
+      st.map[victim.key] = None;        // delete: lookups return None
+      st.size = st.size - 1;
+    }
+  };
+
+  get = fun(key) {
+    node = st.map[key];
+    if (node == None) { return -1; }
+    move_to_front(node);
+    return node.value;
+  };
+
+  put = fun(key, value) {
+    node = st.map[key];
+    if (node == None) {
+      n = Node(key, value);
+      st.map[key] = n;
+      attach_after(st.head, n);
+      st.size = st.size + 1;
+      evict_if_needed();
+    } else {
+      node.value = value;
+      move_to_front(node);
+    }
+    return None;
+  };
+
+  dump = fun() {
+    // Print order from MRU to LRU (excluding sentinels)
+    cur = st.head.next;
+    s = "ORDER:";
+    while (!(cur == st.tail)) {
+      s = s + " " + cur.key;
+      cur = cur.next;
+    }
+    print(s);
+  };
+
+  return {
+    get: get;
+    put: put;
+    dump: dump;
+  };
+};
+
+// ---------------------------
+// Sample Input Sequence #1 (LeetCode classic)
+// ---------------------------
+print("=== Sample 1 ===");
+c1 = LRUCache(2);
+c1.put(1, 1);
+c1.put(2, 2);
+print(c1.get(1));   // 1
+c1.put(3, 3);       // evicts 2
+print(c1.get(2));   // -1
+c1.put(4, 4);       // evicts 1
+print(c1.get(1));   // -1
+print(c1.get(3));   // 3
+print(c1.get(4));   // 4
+c1.dump();          // ORDER: 4 3
+
+// ---------------------------
+// Sample Input Sequence #2 (capacity 3, interleaved)
+// ---------------------------
+print("=== Sample 2 ===");
+c2 = LRUCache(3);
+c2.put(1, 10);
+c2.put(2, 20);
+c2.put(3, 30);
+c2.dump();          // ORDER: 3 2 1
+
+print(c2.get(1));   // 10        -> ORDER: 1 3 2
+c2.dump();
+
+c2.put(4, 40);      // evict 2   -> ORDER: 4 1 3
+c2.dump();
+
+print(c2.get(2));   // -1
+c2.put(5, 50);      // evict 3   -> ORDER: 5 4 1
+c2.dump();
+
+print(c2.get(3));   // -1
+print(c2.get(4));   // 40        -> ORDER: 4 5 1
+c2.dump();
+
+print(c2.get(5));   // 50        -> ORDER: 5 4 1
+c2.dump();

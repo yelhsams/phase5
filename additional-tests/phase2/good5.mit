@@ -1,0 +1,4 @@
+x = 10;
+f = fun(x){ global x; print(x); x = 99; };
+f(123);
+print(x);  // expect 99 

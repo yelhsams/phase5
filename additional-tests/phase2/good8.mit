@@ -1,0 +1,13 @@
+x = 0;
+f = fun(){
+  print(x);
+  b = fun() {
+    global x;
+    x = 1;
+  };
+
+    return b;
+
+};
+f()();
+print(x);    // expect 1

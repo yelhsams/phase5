@@ -1,0 +1,14 @@
+// Test 2: Variables and assignments
+print("Test 2: Variables");
+x = 10;
+y = 20;
+print(x);
+print(y);
+z = x + y;
+print(z);
+x = x * 2;
+print(x);
+name = "Alice";
+print(name);
+flag = true;
+print(flag);

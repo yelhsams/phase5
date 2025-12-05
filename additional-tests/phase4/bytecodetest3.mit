@@ -1,0 +1,36 @@
+// Test 3: Conditional statements
+print("Test 3: Conditionals");
+x = 10;
+if (x > 5) {
+    print("x is greater than 5");
+}
+
+y = 3;
+if (y > 5) {
+    print("y is greater than 5");
+} else {
+    print("y is not greater than 5");
+}
+
+a = 15;
+b = 15;
+if (a == b) {
+    print("a equals b");
+} else {
+    print("a does not equal b");
+}
+
+// Test logical operators
+if (true & false) {
+    print("both true");
+} else {
+    print("not both true");
+}
+
+if (true | false) {
+    print("at least one true");
+}
+
+if (!false) {
+    print("not false is true");
+}

@@ -1,0 +1,120 @@
+// Test 10: Complex program - Simple calculator with history
+print("Test 10: Calculator with History");
+
+// Global history
+history = {
+    operations: None;
+    count: 0;
+};
+
+// Initialize history
+initHistory = fun() {
+    global history;
+    history.operations = {
+        op0: None;
+        op1: None;
+        op2: None;
+        op3: None;
+        op4: None;
+    };
+    history.count = 0;
+    return None;
+};
+
+// Add operation to history
+addToHistory = fun(op, a, b, result) {
+    global history;
+    key = "op" + history.count;
+    entry = {
+        operation: op;
+        operand1: a;
+        operand2: b;
+        result: result;
+    };
+    history.operations[key] = entry;
+    history.count = history.count + 1;
+    return None;
+};
+
+// Calculator operations
+add = fun(a, b) {
+    result = a + b;
+    addToHistory("add", a, b, result);
+    return result;
+};
+
+subtract = fun(a, b) {
+    result = a - b;
+    addToHistory("subtract", a, b, result);
+    return result;
+};
+
+multiply = fun(a, b) {
+    result = a * b;
+    addToHistory("multiply", a, b, result);
+    return result;
+};
+
+divide = fun(a, b) {
+    result = a / b;
+    addToHistory("divide", a, b, result);
+    return result;
+};
+
+// Print history entry
+printHistoryEntry = fun(idx) {
+    global history;
+    key = "op" + idx;
+    entry = history.operations[key];
+    if (entry == None) {
+        print("No entry at index " + idx);
+    } else {
+        print("Operation: " + entry.operation);
+        print("  " + entry.operand1 + " and " + entry.operand2);
+        print("  Result: " + entry.result);
+    }
+    return None;
+};
+
+// Initialize
+initHistory();
+
+// Perform calculations
+print("Calculating 10 + 5:");
+print(add(10, 5));
+
+print("Calculating 20 - 8:");
+print(subtract(20, 8));
+
+print("Calculating 6 * 7:");
+print(multiply(6, 7));
+
+print("Calculating 100 / 4:");
+print(divide(100, 4));
+
+// Print history
+print("History:");
+i = 0;
+while (i < history.count) {
+    printHistoryEntry(i);
+    i = i + 1;
+}
+
+// Factorial with memoization
+memo = { val0: 1; val1: 1; };
+
+factorial = fun(n) {
+    key = "val" + n;
+    cached = memo[key];
+    if (cached == None) {
+        result = n * factorial(n - 1);
+        memo[key] = result;
+        return result;
+    } else {
+        return cached;
+    }
+};
+
+print("Factorial of 5: " + factorial(5));
+print("Factorial of 6: " + factorial(6));
+print("Factorial of 7: " + factorial(7));

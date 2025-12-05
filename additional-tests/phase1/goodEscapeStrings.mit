@@ -1,0 +1,8 @@
+s1 = "";                 // empty string
+s2 = "hello world \n";   // newline
+s3 = "hello world \t";   // tab
+s4 = "She said: \"hi\""; // escaped quotes
+s5 = "C:\\path\\file";   // escaped backslashes
+s6 = "line1\nline2\n";   // multiple newlines
+s7 = "col1\tcol2\tcol3"; // multiple tabs
+s8 = "quote: \" backslash: \\"; // mix of escapes

@@ -1,0 +1,7 @@
+hello_world_function = fun(x, y, z) {
+    return 67;
+};
+
+
+print(hello_world_function(1, 2, 3));
+print(hello_world_function(1, 2, 3, 4, 5));
