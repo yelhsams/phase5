@@ -3,6 +3,7 @@
 #include "bytecode/opt_constprop.hpp"
 #include "bytecode/opt_deadcode.hpp"
 #include "bytecode/opt_inline.hpp"
+#include "bytecode/opt_licm.hpp"
 #include "bytecode/opt_peephole.hpp"
 #include "bytecode/parser.hpp"
 #include "bytecode/prettyprinter.hpp"
@@ -25,8 +26,39 @@ static bool has_opt(const Command &cmd, const std::string &name) {
   auto present = [&](const std::string &needle) {
     return std::find(cmd.opt.begin(), cmd.opt.end(), needle) != cmd.opt.end();
   };
-  // "all" enables every optimization.
-  return present(name) || present("all");
+  return present(name);
+}
+
+static void apply_bytecode_opts(const Command &command,
+                                bytecode::Function *bytecode) {
+  const bool all_opts = has_opt(command, "all");
+  const bool want_constprop = all_opts || has_opt(command, "bytecode-constprop");
+  const bool want_deadcode = all_opts || has_opt(command, "deadcode");
+  const bool want_peephole = all_opts || has_opt(command, "peephole");
+  const bool want_inline = has_opt(command, "inline");
+  const bool want_licm = has_opt(command, "licm");
+
+  if (want_inline) {
+    bytecode::opt_inline::inline_functions(bytecode);
+  }
+
+  // Run a few tightening rounds so that propagation and cleanups can feed each
+  // other (e.g., LICM exposes redundancies that later constant folding can
+  // erase, which in turn enables dead code to fall away).
+  for (int i = 0; i < 3; ++i) {
+    if (want_constprop) {
+      bytecode::opt_constprop::constant_propagate(bytecode);
+    }
+    if (want_peephole) {
+      bytecode::opt_peephole::peephole_optimize(bytecode);
+    }
+    if (want_licm) {
+      bytecode::opt_licm::run(bytecode);
+    }
+    if (want_deadcode) {
+      bytecode::opt_deadcode::eliminate_dead_code(bytecode);
+    }
+  }
 }
 
 static std::string token_kind_name(const mitscript::Token &t) {
@@ -178,24 +210,7 @@ int main(int argc, char **argv) {
 
       BytecodeConverter bc;
       bytecode::Function *bytecode = bc.convert(cfg, /*is_toplevel=*/true);
-
-      // Optional optimization: constant propagation on bytecode
-      if (has_opt(command, "bytecode-constprop") || has_opt(command, "all")) {
-        bytecode::opt_constprop::constant_propagate(bytecode);
-      }
-
-      // Optional optimization: dead code elimination (runs after constant
-      // propagation)
-      if (has_opt(command, "deadcode") || has_opt(command, "all")) {
-        bytecode::opt_deadcode::eliminate_dead_code(bytecode);
-      }
-
-      // Optional optimization: peephole (constant folding)
-      if (has_opt(command, "peephole") || has_opt(command, "all")) {
-        bytecode::opt_peephole::peephole_optimize(bytecode);
-      }
-
-      // bytecode::opt_inline::inline_functions(bytecode);
+      apply_bytecode_opts(command, bytecode);
       vm::VM vm(command.mem);
       vm.run(bytecode);
     } catch (const std::exception &e) {
@@ -238,25 +253,7 @@ int main(int argc, char **argv) {
       bytecode::Function *bytecode_func = bytecode::parse(contents);
 
       size_t max_mem_mb = command.mem;
-
-      // Optional optimization: constant propagation on bytecode
-      if (has_opt(command, "bytecode-constprop") || has_opt(command, "all")) {
-        bytecode::opt_constprop::constant_propagate(bytecode_func);
-      }
-
-      // Optional optimization: dead code elimination (runs after constant
-      // propagation)
-      if (has_opt(command, "deadcode") || has_opt(command, "all")) {
-        bytecode::opt_deadcode::eliminate_dead_code(bytecode_func);
-      }
-
-      // Optional optimization: peephole (constant folding)
-      if (has_opt(command, "peephole") || has_opt(command, "all")) {
-        bytecode::opt_peephole::peephole_optimize(bytecode_func);
-      }
-
-      // Optimization: inlining
-      bytecode::opt_inline::inline_functions(bytecode_func);
+      apply_bytecode_opts(command, bytecode_func);
 
       // Create VM and execute
       vm::VM vm(max_mem_mb);
