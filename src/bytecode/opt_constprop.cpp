@@ -406,18 +406,93 @@ static void constant_propagate_one(bytecode::Function *fn) {
     }
 
     case Operation::LoadGlobal:
-    case Operation::StoreGlobal:
     case Operation::PushReference:
     case Operation::LoadReference:
-    case Operation::StoreReference:
     case Operation::AllocRecord:
-    case Operation::FieldLoad:
-    case Operation::FieldStore:
-    case Operation::IndexLoad:
-    case Operation::IndexStore:
-    case Operation::AllocClosure:
-    case Operation::Call:
-    case Operation::LoadFunc:
+    case Operation::LoadFunc: {
+      // These operations push a value onto the stack
+      stack.push_back(ConstantValue::unknown());
+      new_instructions.push_back(inst);
+      break;
+    }
+
+    case Operation::StoreGlobal: {
+      // Pops a value from the stack
+      if (!stack.empty()) {
+        stack.pop_back();
+      }
+      new_instructions.push_back(inst);
+      break;
+    }
+
+    case Operation::StoreReference: {
+      // Pops two values: value and reference
+      if (!stack.empty()) stack.pop_back();
+      if (!stack.empty()) stack.pop_back();
+      new_instructions.push_back(inst);
+      break;
+    }
+
+    case Operation::FieldLoad: {
+      // Pop record, push field value
+      if (!stack.empty()) {
+        stack.pop_back();
+      }
+      stack.push_back(ConstantValue::unknown());
+      new_instructions.push_back(inst);
+      break;
+    }
+
+    case Operation::FieldStore: {
+      // Pop value and record
+      if (!stack.empty()) stack.pop_back();  // value
+      if (!stack.empty()) stack.pop_back();  // record
+      new_instructions.push_back(inst);
+      break;
+    }
+
+    case Operation::IndexLoad: {
+      // Pop index and record, push value
+      if (!stack.empty()) stack.pop_back();  // index
+      if (!stack.empty()) stack.pop_back();  // record
+      stack.push_back(ConstantValue::unknown());
+      new_instructions.push_back(inst);
+      break;
+    }
+
+    case Operation::IndexStore: {
+      // Pop value, index, and record
+      if (!stack.empty()) stack.pop_back();  // value
+      if (!stack.empty()) stack.pop_back();  // index
+      if (!stack.empty()) stack.pop_back();  // record
+      new_instructions.push_back(inst);
+      break;
+    }
+
+    case Operation::AllocClosure: {
+      // Pop function and free vars, push closure
+      int free_count = inst.operand0.value_or(0);
+      for (int i = 0; i < free_count; ++i) {
+        if (!stack.empty()) stack.pop_back();
+      }
+      if (!stack.empty()) stack.pop_back();  // function
+      stack.push_back(ConstantValue::unknown());
+      new_instructions.push_back(inst);
+      break;
+    }
+
+    case Operation::Call: {
+      // Pop arguments and function, push result
+      int arg_count = inst.operand0.value_or(0);
+      for (int i = 0; i < arg_count; ++i) {
+        if (!stack.empty()) stack.pop_back();
+      }
+      if (!stack.empty()) stack.pop_back();  // function
+      stack.push_back(ConstantValue::unknown());
+      new_instructions.push_back(inst);
+      break;
+    }
+
     case Operation::Return:
     case Operation::Goto:
     case Operation::If: {

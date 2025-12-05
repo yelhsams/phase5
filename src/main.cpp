@@ -168,12 +168,11 @@ int main(int argc, char **argv) {
       ast->accept(&cfg_builder);
 
       // Optional optimization: constant propagation / folding.
-      // if (has_opt(command, "constprop") || has_opt(command, "all")) {
-      // // if (true) {
-      //   mitscript::analysis::ConstantPropagation cp(cfg);
-      //   cp.run();
-      //   cp.rewrite();
-      // }
+      if (has_opt(command, "constprop") || has_opt(command, "all")) {
+        mitscript::analysis::ConstantPropagation cp(cfg);
+        cp.run();
+        cp.rewrite();
+      }
 
       BytecodeConverter bc;
       bytecode::Function *bytecode = bc.convert(cfg, /*is_toplevel=*/true);
@@ -189,7 +188,11 @@ int main(int argc, char **argv) {
         bytecode::opt_deadcode::eliminate_dead_code(bytecode);
       }
 
-      // bytecode::opt_inline::inline_functions(bytecode);
+      // Optional optimization: function inlining
+      if (has_opt(command, "inline") || has_opt(command, "all")) {
+        bytecode::opt_inline::inline_functions(bytecode);
+      }
+
       vm::VM vm(command.mem);
       vm.run(bytecode);
     } catch (const std::exception &e) {
@@ -244,9 +247,10 @@ int main(int argc, char **argv) {
         bytecode::opt_deadcode::eliminate_dead_code(bytecode_func);
       }
 
-      // Optimization: inlining (disabled for now; current pass is not
-      // semantics-safe)
-      bytecode::opt_inline::inline_functions(bytecode_func);
+      // Optional optimization: function inlining
+      if (has_opt(command, "inline") || has_opt(command, "all")) {
+        bytecode::opt_inline::inline_functions(bytecode_func);
+      }
 
       // Create VM and execute
       vm::VM vm(max_mem_mb);
