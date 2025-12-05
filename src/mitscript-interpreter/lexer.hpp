@@ -13,6 +13,8 @@ namespace mitscript {
             std::vector<Token> lex();
     private:
         std::string input;
+        const char *data;
+        size_t size;
         size_t pos;
         int current_line;
         int current_col;
@@ -20,7 +22,6 @@ namespace mitscript {
         bool is_eof() const;
         char peek(size_t lookahead = 0) const;
         std::optional<Token> lex_chunk();
-        std::string getNextContiguousString();
         void skip_ws_and_comments();
         std::optional<mitscript::Token> lex_string(int start_line, int start_col);
         std::optional<mitscript::Token> lex_number(int start_line, int start_col);
