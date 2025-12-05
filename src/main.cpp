@@ -32,6 +32,38 @@ static bool has_opt(const Command &cmd, const std::string &name)
   return present(name);
 }
 
+static void apply_bytecode_opts(const Command &command,
+                                bytecode::Function *bytecode) {
+  const bool all_opts = has_opt(command, "all");
+  const bool want_constprop = all_opts || has_opt(command, "bytecode-constprop");
+  const bool want_deadcode = all_opts || has_opt(command, "deadcode");
+  const bool want_peephole = all_opts || has_opt(command, "peephole");
+  const bool want_inline = has_opt(command, "inline");
+  const bool want_licm = has_opt(command, "licm");
+
+  if (want_inline) {
+    bytecode::opt_inline::inline_functions(bytecode);
+  }
+
+  // Run a few tightening rounds so that propagation and cleanups can feed each
+  // other (e.g., LICM exposes redundancies that later constant folding can
+  // erase, which in turn enables dead code to fall away).
+  for (int i = 0; i < 3; ++i) {
+    if (want_constprop) {
+      bytecode::opt_constprop::constant_propagate(bytecode);
+    }
+    if (want_peephole) {
+      bytecode::opt_peephole::peephole_optimize(bytecode);
+    }
+    if (want_licm) {
+      bytecode::opt_licm::run(bytecode);
+    }
+    if (want_deadcode) {
+      bytecode::opt_deadcode::eliminate_dead_code(bytecode);
+    }
+  }
+}
+
 static std::string token_kind_name(const mitscript::Token &t)
 {
   switch (t.kind)
@@ -190,6 +222,7 @@ int main(int argc, char **argv)
 
       BytecodeConverter bc;
       bytecode::Function *bytecode = bc.convert(cfg, /*is_toplevel=*/true);
+      apply_bytecode_opts(command, bytecode);
 
       // Optional optimization: constant propagation on bytecode
       if (has_opt(command, "bytecode-constprop") || has_opt(command, "all"))
@@ -256,6 +289,7 @@ int main(int argc, char **argv)
       bytecode::Function *bytecode_func = bytecode::parse(contents);
 
       size_t max_mem_mb = command.mem;
+      apply_bytecode_opts(command, bytecode_func);
 
       // Optional optimization: constant propagation on bytecode
       if (has_opt(command, "bytecode-constprop") || has_opt(command, "all"))

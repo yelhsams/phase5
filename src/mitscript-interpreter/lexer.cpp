@@ -6,63 +6,79 @@
 #include <optional>
 #include <sstream>
 #include <vector>
-#include <set>
-#include <unordered_map>
 
+static inline bool is_ident_start(char c) {
+    return std::isalpha(static_cast<unsigned char>(c)) || c == '_';
+}
 
+static inline bool is_ident_continue(char c) {
+    return std::isalnum(static_cast<unsigned char>(c)) || c == '_';
+}
 
+static inline std::optional<mitscript::TokenKind> keyword_kind(const std::string &identifier) {
+    switch (identifier.size()) {
+        case 2:
+            if (identifier == "if") return mitscript::TokenKind::IF;
+            break;
+        case 3:
+            if (identifier == "fun") return mitscript::TokenKind::FUN;
+            break;
+        case 4:
+            if (identifier == "true") return mitscript::TokenKind::TRUE;
+            if (identifier == "else") return mitscript::TokenKind::ELSE;
+            if (identifier == "None") return mitscript::TokenKind::NONE;
+            break;
+        case 5:
+            if (identifier == "while") return mitscript::TokenKind::WHILE;
+            if (identifier == "false") return mitscript::TokenKind::FALSE;
+            break;
+        case 6:
+            if (identifier == "return") return mitscript::TokenKind::RETURN;
+            if (identifier == "global") return mitscript::TokenKind::GLOBAL;
+            break;
+        default:
+            break;
+    }
+    return std::nullopt;
+}
 
-static const std::unordered_map<std::string, mitscript::TokenKind> string_to_token = {
-    // Keywords
-    {"global", mitscript::TokenKind::GLOBAL},
-    {"if", mitscript::TokenKind::IF},
-    {"else", mitscript::TokenKind::ELSE},
-    {"while", mitscript::TokenKind::WHILE},
-    {"return", mitscript::TokenKind::RETURN},
-    {"fun", mitscript::TokenKind::FUN},
-    {"true", mitscript::TokenKind::TRUE},
-    {"false", mitscript::TokenKind::FALSE},
-    {"None", mitscript::TokenKind::NONE},
-
-    // Punctuation & Delimiters
-    {"{", mitscript::TokenKind::LBRACE},
-    {"}", mitscript::TokenKind::RBRACE},
-    {"[", mitscript::TokenKind::LBRACKET},
-    {"]", mitscript::TokenKind::RBRACKET},
-    {"(", mitscript::TokenKind::LPAREN},
-    {")", mitscript::TokenKind::RPAREN},
-    {",", mitscript::TokenKind::COMMA},
-    {":", mitscript::TokenKind::COLON},
-    {";", mitscript::TokenKind::SEMICOLON},
-    {".", mitscript::TokenKind::DOT},
-    {"=", mitscript::TokenKind::ASSIGN},
-
-    // Operators
-    {"*", mitscript::TokenKind::MULT},
-    {"/", mitscript::TokenKind::DIV},
-    {"+", mitscript::TokenKind::ADD},
-    {"-", mitscript::TokenKind::SUB},
-    {"<", mitscript::TokenKind::LT},
-    {"<=", mitscript::TokenKind::LE},
-    {">=", mitscript::TokenKind::GE},
-    {">", mitscript::TokenKind::GT},
-    {"==", mitscript::TokenKind::EQEQ},
-    {"!", mitscript::TokenKind::BANG},
-    {"&", mitscript::TokenKind::AMP},
-    {"|", mitscript::TokenKind::BAR}
-};
-
-void mitscript::Lexer::skip_ws_and_comments() {
+void mitscript::Lexer::skip_ws_and_comments(const char *&p, const char *end, int &line, int &col) {
     for (;;) {
-        while (!is_eof() && std::isspace(static_cast<unsigned char>(peek()))) {
-            advance();
+        while (p < end) {
+            char c = *p;
+            if (c == ' ' || c == '\t' || c == '\f' || c == '\v') {
+                ++p;
+                ++col;
+                continue;
+            }
+            if (c == '\n') {
+                ++p;
+                ++line;
+                col = 1;
+                continue;
+            }
+            if (c == '\r') {
+                ++p;
+                if (p < end && *p == '\n') {
+                    ++p;
+                }
+                ++line;
+                col = 1;
+                continue;
+            }
+            break;
         }
 
-        if (!is_eof() && peek() == '/' && peek(1) == '/') {
-            advance();
-            advance();
-            while (!is_eof() && peek() != '\n' && peek() != '\r') {
-                advance();
+        if (p + 1 < end && *p == '/' && p[1] == '/') {
+            p += 2;
+            col += 2;
+            while (p < end) {
+                char c = *p;
+                if (c == '\n' || c == '\r') {
+                    break;
+                }
+                ++p;
+                ++col;
             }
             continue;
         }
@@ -70,112 +86,49 @@ void mitscript::Lexer::skip_ws_and_comments() {
         break;
     }
 }
+
 mitscript::Token mitscript::Lexer::make_error(const std::string &error_msg, int start_line, int start_col, int end_line, int end_col) {
     return mitscript::Token(mitscript::TokenKind::ERROR, error_msg, start_line, start_col, end_line, end_col);
 }
+
 mitscript::Lexer::Lexer(const std::string &file_contents)
-    : input(file_contents), pos(0), current_line(1), current_col(1) {}
+    : input(file_contents), data(input.c_str()), size(input.size()), pos(0), current_line(1), current_col(1) {}
 
-char mitscript::Lexer::peek(size_t lookahead) const {
-    const size_t idx = pos + lookahead;
-    if (idx >= input.size()) {
-        return '\0';
-    }
-    return input[idx];
-}
-
-bool mitscript::Lexer::is_eof() const {
-    return pos >= input.size();
-}
-std::string mitscript::Lexer::getNextContiguousString() {
-
-    if (is_eof()) {
-        return "";
-    }
-
-    std::string result;
-    while (!is_eof()) {
-        char c = peek();
-        if (!(std::isalnum(static_cast<unsigned char>(c)) || c == '_')) {
-            break;
-        }
-        result.push_back(c);
-        advance();
-    }
-    return result;
-}
-
-void mitscript::Lexer::advance() {
-    if (is_eof()) return;
-
-    char c = input[pos++];
-
-    if (c == '\r') {
-        if (peek() == '\n') {
-            ++pos; // consume the '\n'
-        }
-        ++current_line;
-        current_col = 1;
-        return;
-    }
-
-    if (c == '\n') {
-        ++current_line;
-        current_col = 1;
-    } else {
-        ++current_col;
-    }
-}
-
-
-//     advance();
-//     std::string string_literal;
-//     string_literal += '"';
-//     while(!is_eof() && peek() != '"') {
-//         string_literal += peek();
-//         advance();
-//     }
-//     if (is_eof()) {
-//         std::string error_msg = "Unterminated string literal starting at line " + std::to_string(start_line) + ", column " + std::to_string(start_col);
-//         return make_error(error_msg, start_line, start_col, this->current_line, this->current_col);
-//     } else {
-//         advance(); // Skip the closing quote
-//         string_literal += '"';
-//         return mitscript::Token(mitscript::TokenKind::STRING, string_literal, start_line, start_col, this->current_line, this->current_col);
-//     }
-// }
-std::optional<mitscript::Token>
-mitscript::Lexer::lex_string(int start_line, int start_col) {
-    advance();
+mitscript::Token
+mitscript::Lexer::lex_string(const char *&p, const char *end, int &line, int &col, int start_line, int start_col) {
+    ++p;
+    ++col;
 
     std::string string_literal;
     string_literal.push_back('"');
 
-    while (!is_eof()) {
-        char c = peek();
+    while (p < end) {
+        char c = *p;
 
         if (c == '\n' || c == '\r') {
             std::string error_msg = "Unterminated string literal starting at line " +
                 std::to_string(start_line) + ", column " + std::to_string(start_col);
-            return make_error(error_msg, start_line, start_col, current_line, current_col);
+            return make_error(error_msg, start_line, start_col, line, col);
         }
 
         if (c == '"') {
-            advance();
+            ++p;
+            ++col;
             string_literal.push_back('"');
             return mitscript::Token(mitscript::TokenKind::STRING,
                                     string_literal, start_line, start_col,
-                                    current_line, current_col);
+                                    line, col);
         }
 
         if (c == '\\') {
-            advance();
-            if (is_eof()) {
+            ++p;
+            ++col;
+            if (p >= end) {
                 std::string error_msg = "Unterminated string literal starting at line " +
                     std::to_string(start_line) + ", column " + std::to_string(start_col);
-                return make_error(error_msg, start_line, start_col, current_line, current_col);
+                return make_error(error_msg, start_line, start_col, line, col);
             }
-            char e = peek();
+            char e = *p;
             switch (e) {
                 case '"':
                 case '\\':
@@ -183,116 +136,158 @@ mitscript::Lexer::lex_string(int start_line, int start_col) {
                 case 't':
                     string_literal.push_back('\\');
                     string_literal.push_back(e);
-                    advance();
+                    ++p;
+                    ++col;
                     break;
                 default: {
-                    std::string error_msg = "Invalid escape sequence '\\"
+                    std::string error_msg = "Invalid escape sequence '\\\""
                         + std::string(1, e) + "' in string literal starting at line "
                         + std::to_string(start_line) + ", column " + std::to_string(start_col);
-                    return make_error(error_msg, start_line, start_col, current_line, current_col);
+                    return make_error(error_msg, start_line, start_col, line, col);
                 }
             }
             continue;
         }
 
         string_literal.push_back(c);
-        advance();
+        ++p;
+        ++col;
     }
 
-    // EOF before closing quote
     std::string error_msg = "Unterminated string literal starting at line " +
         std::to_string(start_line) + ", column " + std::to_string(start_col);
-    return make_error(error_msg, start_line, start_col, current_line, current_col);
+    return make_error(error_msg, start_line, start_col, line, col);
 }
 
-
-std::optional<mitscript::Token> mitscript::Lexer::lex_number(int start_line, int start_col) {
-    std::string number_literal;
-    while (!is_eof() && std::isdigit(peek())) {
-        number_literal += peek();
-        advance();
+mitscript::Token mitscript::Lexer::lex_number(const char *&p, const char *end, int &line, int &col, int start_line, int start_col) {
+    const char *start = p;
+    while (p < end && std::isdigit(static_cast<unsigned char>(*p))) {
+        ++p;
+        ++col;
     }
-    return mitscript::Token(mitscript::TokenKind::INT, number_literal, start_line, start_col, this->current_line, this->current_col);
+    return mitscript::Token(mitscript::TokenKind::INT, std::string(start, p - start), start_line, start_col, line, col);
 }
 
-std::optional<mitscript::Token> mitscript::Lexer::lex_identifier_or_keyword(int start_line, int start_col) {
-    std::string identifier = getNextContiguousString();
-    auto keyword_it = string_to_token.find(identifier);
-    if (keyword_it != string_to_token.end()) {
-        return mitscript::Token(keyword_it->second, identifier, start_line, start_col, this->current_line, this->current_col);
-    } else {
-        return mitscript::Token(mitscript::TokenKind::IDENTIFIER, identifier, start_line, start_col, this->current_line, this->current_col);
+mitscript::Token mitscript::Lexer::lex_identifier_or_keyword(const char *&p, const char *end, int &line, int &col, int start_line, int start_col) {
+    const char *start = p;
+    while (p < end && is_ident_continue(*p)) {
+        ++p;
+        ++col;
     }
 
-
-
+    std::string identifier(start, p - start);
+    auto keyword = keyword_kind(identifier);
+    if (keyword.has_value()) {
+        return mitscript::Token(*keyword, identifier, start_line, start_col, line, col);
+    }
+    return mitscript::Token(mitscript::TokenKind::IDENTIFIER, identifier, start_line, start_col, line, col);
 }
 
 std::vector<mitscript::Token> mitscript::Lexer::lex() {
     std::vector<mitscript::Token> tokens;
     tokens.reserve(input.size() / 4 + 8);
-    while (true) {
-        skip_ws_and_comments();
 
-        if (is_eof()) {
+    const char *p = data;
+    const char *end = data + size;
+    int line = 1;
+    int col = 1;
+
+    while (true) {
+        skip_ws_and_comments(p, end, line, col);
+
+        if (p >= end) {
             break;
         }
 
-
-        int sl = current_line, sc = current_col;
-        char c = peek();
+        int sl = line, sc = col;
+        char c = *p;
 
         if (c == '"') {
-            auto token = lex_string(sl, sc);
-            tokens.push_back(*token);
+            tokens.push_back(lex_string(p, end, line, col, sl, sc));
+            continue;
         }
 
-         else if (std::isdigit(c)) {
-            auto token = lex_number(sl, sc);
-            tokens.push_back(*token);
+        if (std::isdigit(static_cast<unsigned char>(c))) {
+            tokens.push_back(lex_number(p, end, line, col, sl, sc));
+            continue;
         }
 
-        else if (std::isalpha(c) || c == '_') {
-            auto token = lex_identifier_or_keyword(sl, sc);
-            tokens.push_back(*token);
+        if (is_ident_start(c)) {
+            tokens.push_back(lex_identifier_or_keyword(p, end, line, col, sl, sc));
+            continue;
         }
 
-        else {
-            if (peek(1) != '\0') {
-                std::string next_two_chars;
-                next_two_chars.push_back(c);
-                next_two_chars.push_back(peek(1));
-                auto two_char_op = string_to_token.find(next_two_chars);
-                if (two_char_op != string_to_token.end()) {
-                    advance();
-                    advance();
-                    tokens.emplace_back(two_char_op->second, next_two_chars, sl, sc, current_line, current_col);
-                    continue;
+        switch (c) {
+            case '{': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::LBRACE, "{", sl, sc, line, col); break;
+            case '}': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::RBRACE, "}", sl, sc, line, col); break;
+            case '[': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::LBRACKET, "[", sl, sc, line, col); break;
+            case ']': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::RBRACKET, "]", sl, sc, line, col); break;
+            case '(': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::LPAREN, "(", sl, sc, line, col); break;
+            case ')': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::RPAREN, ")", sl, sc, line, col); break;
+            case ',': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::COMMA, ",", sl, sc, line, col); break;
+            case ':': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::COLON, ":", sl, sc, line, col); break;
+            case ';': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::SEMICOLON, ";", sl, sc, line, col); break;
+            case '.': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::DOT, ".", sl, sc, line, col); break;
+            case '*': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::MULT, "*", sl, sc, line, col); break;
+            case '/': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::DIV, "/", sl, sc, line, col); break;
+            case '+': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::ADD, "+", sl, sc, line, col); break;
+            case '-': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::SUB, "-", sl, sc, line, col); break;
+            case '!': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::BANG, "!", sl, sc, line, col); break;
+            case '&': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::AMP, "&", sl, sc, line, col); break;
+            case '|': ++p; ++col; tokens.emplace_back(mitscript::TokenKind::BAR, "|", sl, sc, line, col); break;
+            case '<':
+                if (p + 1 < end && p[1] == '=') {
+                    p += 2;
+                    col += 2;
+                    tokens.emplace_back(mitscript::TokenKind::LE, "<=", sl, sc, line, col);
+                } else {
+                    ++p;
+                    ++col;
+                    tokens.emplace_back(mitscript::TokenKind::LT, "<", sl, sc, line, col);
                 }
+                break;
+            case '>':
+                if (p + 1 < end && p[1] == '=') {
+                    p += 2;
+                    col += 2;
+                    tokens.emplace_back(mitscript::TokenKind::GE, ">=", sl, sc, line, col);
+                } else {
+                    ++p;
+                    ++col;
+                    tokens.emplace_back(mitscript::TokenKind::GT, ">", sl, sc, line, col);
+                }
+                break;
+            case '=':
+                if (p + 1 < end && p[1] == '=') {
+                    p += 2;
+                    col += 2;
+                    tokens.emplace_back(mitscript::TokenKind::EQEQ, "==", sl, sc, line, col);
+                } else {
+                    ++p;
+                    ++col;
+                    tokens.emplace_back(mitscript::TokenKind::ASSIGN, "=", sl, sc, line, col);
+                }
+                break;
+            default: {
+                std::string error_msg;
+                if ((unsigned char)c >= 32 && (unsigned char)c <= 126) {
+                    error_msg = "illegal character '" + std::string(1, c) + "'";
+                } else {
+                    std::ostringstream oss;
+                    oss << "illegal character 0x" << std::hex << std::uppercase << (int)(unsigned char)c;
+                    error_msg = oss.str();
+                }
+                ++p;
+                ++col;
+                tokens.push_back(make_error(error_msg, sl, sc, line, col));
+                break;
             }
-
-            std::string one(1, c);
-            auto one_char_op = string_to_token.find(one);
-            if (one_char_op != string_to_token.end()) {
-                advance();
-                tokens.emplace_back(one_char_op->second, one, sl, sc, current_line, current_col);
-                continue;
-            }
-
-            std::string error_msg;
-            if ((unsigned char)c >= 32 && (unsigned char)c <= 126) {
-                error_msg = "illegal character '" + std::string(1, c) + "'";
-            } else {
-                std::ostringstream oss;
-                oss << "illegal character 0x" << std::hex << std::uppercase << (int)(unsigned char)c;
-                error_msg = oss.str();
-            }
-            advance();
-            tokens.push_back(make_error(error_msg, sl, sc, current_line, current_col));
         }
-
     }
 
-    // tokens.emplace_back(mitscript::TokenKind::EOF_TOKEN, "", current_line, current_col, current_line, current_col);
+    pos = static_cast<size_t>(p - data);
+    current_line = line;
+    current_col = col;
+
     return tokens;
 }
