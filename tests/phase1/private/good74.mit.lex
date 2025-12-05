@@ -1,0 +1,20 @@
+3 IDENTIFIER x
+3 =
+3 INTLITERAL 5
+3 ;
+4 IDENTIFIER y
+4 =
+4 INTLITERAL 7
+4 ;
+5 IDENTIFIER z
+5 =
+5 fun
+5 (
+5 IDENTIFIER x
+5 )
+5 {
+5 return
+5 IDENTIFIER x
+5 ;
+5 }
+5 ;

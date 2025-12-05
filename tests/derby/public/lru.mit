@@ -1,0 +1,149 @@
+mod = fun(a, b) {
+    return a - (a / b) * b;
+};
+
+lshift = fun(a, b) {
+    result = a;
+    i = 0;
+    while (i < b) {
+        result = result * 2;
+        i = i + 1;
+    }
+    return result;
+};
+
+LinkedListNode = fun(data) {
+    this = {
+        data : data;
+        prev : None;
+        next : None;
+    };
+    return this;
+};
+
+LinkedList = fun() {
+    this = {
+        head : None;
+        tail : None;
+        len : 0;
+
+        add : fun(data) {
+            node = LinkedListNode(data);
+            this.add_node(node);
+            this.len = this.len + 1;
+            return node;
+        };
+
+        add_node : fun(node) {
+            if (this.head == None) {
+                this.head = node;
+                node.prev = None;
+            } else {
+                if (!(this.tail == None)) {
+                    node.prev = this.tail;
+                    this.tail.next = node;
+                }
+            }
+            this.tail = node;
+            node.next = None;
+        };
+
+        remove : fun(node) {
+            if (this.head == node) {
+                this.head = node.next;
+            }
+            if (this.tail == node) {
+                this.tail = node.prev;
+            }
+            if (!(node.prev == None)) {
+                node.prev.next = node.next;
+            }
+            if (!(node.next == None)) {
+                node.next.prev = node.prev;
+            }
+        };
+
+        move_to_end : fun(node) {
+            this.remove(node);
+            this.add_node(node);
+        };
+    };
+    return this;
+};
+
+LRU = fun(size) {
+    this = {
+        size : size;
+        key_lookup : {};
+        entries : LinkedList();
+
+        get : fun(key) {
+            node = this.key_lookup[key];
+            if (node == None) {
+                return None;
+            }
+            this.entries.move_to_end(node);
+            return node.data.value;
+        };
+
+        put : fun(key, value) {
+            node = this.key_lookup[key];
+            if (!(node == None)) {
+                node.data = { key : key; value : value; };
+                this.entries.move_to_end(node);
+            } else {
+                if (this.entries.len == this.size) {
+                    head = this.entries.head;
+                    old_key = head.data.key;
+                    this.key_lookup[old_key] = None;
+                    head.data = { key : key; value : value; };
+                    this.entries.move_to_end(head);
+                    this.key_lookup[key] = head;
+                } else {
+                    this.key_lookup[key] = this.entries.add({ key : key; value : value; });
+                }
+            }
+        };
+    };
+    return this;
+};
+
+lcg = fun(seed) {
+    A = 1103515245;
+    C = 12345;
+    M = lshift(1, 31);
+    state = { seed : seed; };
+    return {
+        next : fun() {
+            state.seed = mod(A * state.seed + C, M);
+            return state.seed;
+        };
+    };
+};
+
+size = intcast(input());
+n = intcast(input());
+
+mod_val = size * 10;
+rng0 = lcg(0);
+rng1 = lcg(1);
+hit = 0;
+missed = 0;
+lru = LRU(size);
+
+i = 0;
+while (i < n) {
+    n0 = mod(rng0.next(), mod_val);
+    lru.put(n0, n0);
+    n1 = mod(rng1.next(), mod_val);
+    if (lru.get(n1) == None) {
+        missed = missed + 1;
+    } else {
+        hit = hit + 1;
+    }
+    i = i + 1;
+}
+
+print(hit);
+print(missed);
+

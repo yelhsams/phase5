@@ -1,0 +1,118 @@
+power = fun(base, exp) {
+    result = 1;
+    i = 0;
+    while (i < exp) {
+        result = result * base;
+        i = i + 1;
+    }
+    return result;
+};
+
+max = fun(a, b) {
+    if (a > b) {
+        return a;
+    } else {
+        return b;
+    }
+};
+
+make_tree = fun(d) {
+    if (d > 0) {
+        d = d - 1;
+        left = make_tree(d);
+        right = make_tree(d);
+        return { left : left; right : right; };
+    } else {
+        return { left : None; right : None; };
+    }
+};
+
+check_tree = fun(node) {
+    l = node.left;
+    r = node.right;
+    if (l == None) {
+        return 1;
+    } else {
+        return 1 + check_tree(l) + check_tree(r);
+    }
+};
+
+make_check = fun(itde) {
+    i = itde.i;
+    d = itde.d;
+    tree = make_tree(d);
+    return check_tree(tree);
+};
+
+get_argchunks = fun(i, d, chunksize) {
+    chunks = {};
+    chunk_idx = 0;
+    chunk = {};
+    chunk_len = 0;
+    k = 1;
+    while (k <= i) {
+        chunk[chunk_len] = { i : k; d : d; };
+        chunk_len = chunk_len + 1;
+        if (chunk_len == chunksize) {
+            chunk.length = chunk_len;
+            chunks[chunk_idx] = chunk;
+            chunk_idx = chunk_idx + 1;
+            chunk = {};
+            chunk_len = 0;
+        }
+        k = k + 1;
+    }
+    if (chunk_len > 0) {
+        chunk.length = chunk_len;
+        chunks[chunk_idx] = chunk;
+        chunk_idx = chunk_idx + 1;
+    }
+    chunks.length = chunk_idx;
+    return chunks;
+};
+
+sum_map = fun(chunk) {
+    total = 0;
+    idx = 0;
+    while (idx < chunk.length) {
+        itde = chunk[idx];
+        result = make_check(itde);
+        total = total + result;
+        idx = idx + 1;
+    }
+    return total;
+};
+
+main = fun(n, min_depth) {
+    max_depth = max(min_depth + 2, n);
+    stretch_depth = max_depth + 1;
+
+    stretch_itde = { i : 0; d : stretch_depth; };
+    stretch_check = make_check(stretch_itde);
+    print("stretch tree of depth " + stretch_depth + "\t check: " + stretch_check);
+
+    long_lived_tree = make_tree(max_depth);
+
+    mmd = max_depth + min_depth;
+    d = min_depth;
+    while (d < stretch_depth) {
+        i = power(2, mmd - d);
+        cs = 0;
+        chunks = get_argchunks(i, d, 5000);
+        chunk_idx = 0;
+        while (chunk_idx < chunks.length) {
+            chunk = chunks[chunk_idx];
+            cs = cs + sum_map(chunk);
+            chunk_idx = chunk_idx + 1;
+        }
+        print(i + "\t trees of depth " + d + "\t check: " + cs);
+        d = d + 2;
+    }
+
+    long_check = check_tree(long_lived_tree);
+    print("long lived tree of depth " + max_depth + "\t check: " + long_check);
+};
+
+n = intcast(input());
+main(n, 4);
+

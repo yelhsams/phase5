@@ -1,0 +1,809 @@
+1 IDENTIFIER Tree
+1 =
+1 fun
+1 (
+1 )
+1 {
+2 IDENTIFIER Node
+2 =
+2 fun
+2 (
+2 IDENTIFIER v
+2 )
+2 {
+3 IDENTIFIER this
+3 =
+3 {
+4 IDENTIFIER val
+4 :
+4 IDENTIFIER v
+4 ;
+5 IDENTIFIER left
+5 :
+5 None
+5 ;
+6 IDENTIFIER right
+6 :
+6 None
+6 ;
+7 IDENTIFIER len
+7 :
+7 fun
+7 (
+7 )
+7 {
+8 IDENTIFIER count
+8 =
+8 INTLITERAL 1
+8 ;
+9 if
+9 (
+9 !
+9 (
+9 IDENTIFIER this
+9 .
+9 IDENTIFIER left
+9 ==
+9 None
+9 )
+9 )
+9 {
+9 IDENTIFIER count
+9 =
+9 IDENTIFIER count
+9 +
+9 IDENTIFIER this
+9 .
+9 IDENTIFIER left
+9 .
+9 IDENTIFIER len
+9 (
+9 )
+9 ;
+9 }
+10 if
+10 (
+10 !
+10 (
+10 IDENTIFIER this
+10 .
+10 IDENTIFIER right
+10 ==
+10 None
+10 )
+10 )
+10 {
+10 IDENTIFIER count
+10 =
+10 IDENTIFIER count
+10 +
+10 IDENTIFIER this
+10 .
+10 IDENTIFIER right
+10 .
+10 IDENTIFIER len
+10 (
+10 )
+10 ;
+10 }
+11 return
+11 IDENTIFIER count
+11 ;
+12 }
+12 ;
+13 IDENTIFIER contains
+13 :
+13 fun
+13 (
+13 IDENTIFIER x
+13 )
+13 {
+14 if
+14 (
+14 IDENTIFIER x
+14 ==
+14 IDENTIFIER this
+14 .
+14 IDENTIFIER val
+14 )
+14 {
+14 return
+14 BOOLEANLITERAL true
+14 ;
+14 }
+15 if
+15 (
+15 IDENTIFIER x
+15 <
+15 IDENTIFIER this
+15 .
+15 IDENTIFIER val
+15 )
+15 {
+16 if
+16 (
+16 IDENTIFIER this
+16 .
+16 IDENTIFIER left
+16 ==
+16 None
+16 )
+16 {
+16 return
+16 BOOLEANLITERAL false
+16 ;
+16 }
+17 else
+17 {
+17 return
+17 IDENTIFIER this
+17 .
+17 IDENTIFIER left
+17 .
+17 IDENTIFIER contains
+17 (
+17 IDENTIFIER x
+17 )
+17 ;
+17 }
+18 }
+19 else
+19 {
+19 if
+19 (
+19 IDENTIFIER this
+19 .
+19 IDENTIFIER right
+19 ==
+19 None
+19 )
+19 {
+19 return
+19 BOOLEANLITERAL false
+19 ;
+19 }
+20 else
+20 {
+20 return
+20 IDENTIFIER this
+20 .
+20 IDENTIFIER right
+20 .
+20 IDENTIFIER contains
+20 (
+20 IDENTIFIER x
+20 )
+20 ;
+20 }
+21 }
+22 }
+22 ;
+23 IDENTIFIER add
+23 :
+23 fun
+23 (
+23 IDENTIFIER x
+23 )
+23 {
+24 if
+24 (
+24 IDENTIFIER x
+24 <
+24 IDENTIFIER this
+24 .
+24 IDENTIFIER val
+24 )
+24 {
+25 if
+25 (
+25 IDENTIFIER this
+25 .
+25 IDENTIFIER left
+25 ==
+25 None
+25 )
+25 {
+25 IDENTIFIER this
+25 .
+25 IDENTIFIER left
+25 =
+25 IDENTIFIER Node
+25 (
+25 IDENTIFIER x
+25 )
+25 ;
+25 }
+26 else
+26 {
+26 IDENTIFIER this
+26 .
+26 IDENTIFIER left
+26 .
+26 IDENTIFIER add
+26 (
+26 IDENTIFIER x
+26 )
+26 ;
+26 }
+27 }
+27 else
+27 {
+28 if
+28 (
+28 IDENTIFIER x
+28 >
+28 IDENTIFIER this
+28 .
+28 IDENTIFIER val
+28 )
+28 {
+29 if
+29 (
+29 IDENTIFIER this
+29 .
+29 IDENTIFIER right
+29 ==
+29 None
+29 )
+29 {
+29 IDENTIFIER this
+29 .
+29 IDENTIFIER right
+29 =
+29 IDENTIFIER Node
+29 (
+29 IDENTIFIER x
+29 )
+29 ;
+29 }
+30 else
+30 {
+30 IDENTIFIER this
+30 .
+30 IDENTIFIER right
+30 .
+30 IDENTIFIER add
+30 (
+30 IDENTIFIER x
+30 )
+30 ;
+30 }
+31 }
+32 }
+33 }
+33 ;
+34 IDENTIFIER min
+34 :
+34 fun
+34 (
+34 )
+34 {
+35 if
+35 (
+35 IDENTIFIER this
+35 .
+35 IDENTIFIER left
+35 ==
+35 None
+35 )
+35 {
+35 return
+35 IDENTIFIER this
+35 .
+35 IDENTIFIER val
+35 ;
+35 }
+36 else
+36 {
+36 return
+36 IDENTIFIER this
+36 .
+36 IDENTIFIER left
+36 .
+36 IDENTIFIER min
+36 (
+36 )
+36 ;
+36 }
+37 }
+37 ;
+38 IDENTIFIER max
+38 :
+38 fun
+38 (
+38 )
+38 {
+39 if
+39 (
+39 IDENTIFIER this
+39 .
+39 IDENTIFIER right
+39 ==
+39 None
+39 )
+39 {
+39 return
+39 IDENTIFIER this
+39 .
+39 IDENTIFIER val
+39 ;
+39 }
+40 else
+40 {
+40 return
+40 IDENTIFIER this
+40 .
+40 IDENTIFIER right
+40 .
+40 IDENTIFIER max
+40 (
+40 )
+40 ;
+40 }
+41 }
+41 ;
+42 IDENTIFIER forall
+42 :
+42 fun
+42 (
+42 IDENTIFIER f
+42 )
+42 {
+43 if
+43 (
+43 !
+43 (
+43 IDENTIFIER this
+43 .
+43 IDENTIFIER left
+43 ==
+43 None
+43 )
+43 )
+43 {
+43 IDENTIFIER this
+43 .
+43 IDENTIFIER left
+43 .
+43 IDENTIFIER forall
+43 (
+43 IDENTIFIER f
+43 )
+43 ;
+43 }
+44 IDENTIFIER f
+44 (
+44 IDENTIFIER this
+44 .
+44 IDENTIFIER val
+44 )
+44 ;
+45 if
+45 (
+45 !
+45 (
+45 IDENTIFIER this
+45 .
+45 IDENTIFIER right
+45 ==
+45 None
+45 )
+45 )
+45 {
+45 IDENTIFIER this
+45 .
+45 IDENTIFIER right
+45 .
+45 IDENTIFIER forall
+45 (
+45 IDENTIFIER f
+45 )
+45 ;
+45 }
+46 }
+46 ;
+47 }
+47 ;
+48 return
+48 IDENTIFIER this
+48 ;
+49 }
+49 ;
+50 IDENTIFIER this
+50 =
+50 {
+51 IDENTIFIER root
+51 :
+51 None
+51 ;
+52 IDENTIFIER contains
+52 :
+52 fun
+52 (
+52 IDENTIFIER x
+52 )
+52 {
+53 if
+53 (
+53 IDENTIFIER this
+53 .
+53 IDENTIFIER root
+53 ==
+53 None
+53 )
+53 {
+54 return
+54 BOOLEANLITERAL false
+54 ;
+55 }
+55 else
+55 {
+56 return
+56 IDENTIFIER this
+56 .
+56 IDENTIFIER root
+56 .
+56 IDENTIFIER contains
+56 (
+56 IDENTIFIER x
+56 )
+56 ;
+57 }
+58 }
+58 ;
+59 IDENTIFIER add
+59 :
+59 fun
+59 (
+59 IDENTIFIER x
+59 )
+59 {
+60 if
+60 (
+60 IDENTIFIER this
+60 .
+60 IDENTIFIER root
+60 ==
+60 None
+60 )
+60 {
+61 IDENTIFIER this
+61 .
+61 IDENTIFIER root
+61 =
+61 IDENTIFIER Node
+61 (
+61 IDENTIFIER x
+61 )
+61 ;
+62 }
+62 else
+62 {
+63 IDENTIFIER this
+63 .
+63 IDENTIFIER root
+63 .
+63 IDENTIFIER add
+63 (
+63 IDENTIFIER x
+63 )
+63 ;
+64 }
+66 }
+66 ;
+67 IDENTIFIER min
+67 :
+67 fun
+67 (
+67 )
+67 {
+68 if
+68 (
+68 IDENTIFIER this
+68 .
+68 IDENTIFIER root
+68 ==
+68 None
+68 )
+68 {
+69 return
+69 STRINGLITERAL "error"
+69 ;
+70 }
+70 else
+70 {
+71 return
+71 IDENTIFIER this
+71 .
+71 IDENTIFIER root
+71 .
+71 IDENTIFIER min
+71 (
+71 )
+71 ;
+72 }
+73 }
+73 ;
+74 IDENTIFIER max
+74 :
+74 fun
+74 (
+74 )
+74 {
+75 if
+75 (
+75 IDENTIFIER this
+75 .
+75 IDENTIFIER root
+75 ==
+75 None
+75 )
+75 {
+76 return
+76 STRINGLITERAL "error"
+76 ;
+77 }
+77 else
+77 {
+78 return
+78 IDENTIFIER this
+78 .
+78 IDENTIFIER root
+78 .
+78 IDENTIFIER max
+78 (
+78 )
+78 ;
+79 }
+80 }
+80 ;
+83 IDENTIFIER len
+83 :
+83 fun
+83 (
+83 )
+83 {
+84 if
+84 (
+84 IDENTIFIER this
+84 .
+84 IDENTIFIER root
+84 ==
+84 None
+84 )
+84 {
+85 return
+85 INTLITERAL 0
+85 ;
+86 }
+86 else
+86 {
+87 return
+87 IDENTIFIER this
+87 .
+87 IDENTIFIER root
+87 .
+87 IDENTIFIER len
+87 (
+87 )
+87 ;
+88 }
+90 }
+90 ;
+91 IDENTIFIER forall
+91 :
+91 fun
+91 (
+91 IDENTIFIER f
+91 )
+91 {
+92 if
+92 (
+92 IDENTIFIER this
+92 .
+92 IDENTIFIER root
+92 ==
+92 None
+92 )
+92 {
+94 }
+94 else
+94 {
+95 IDENTIFIER this
+95 .
+95 IDENTIFIER root
+95 .
+95 IDENTIFIER forall
+95 (
+95 IDENTIFIER f
+95 )
+95 ;
+96 }
+97 }
+97 ;
+99 }
+99 ;
+103 return
+103 IDENTIFIER this
+103 ;
+104 }
+104 ;
+109 IDENTIFIER M
+109 =
+109 INTLITERAL 400
+109 ;
+110 IDENTIFIER N
+110 =
+110 IDENTIFIER intcast
+110 (
+110 IDENTIFIER input
+110 (
+110 )
+110 )
+110 ;
+111 IDENTIFIER t
+111 =
+111 IDENTIFIER Tree
+111 (
+111 )
+111 ;
+112 IDENTIFIER i
+112 =
+112 INTLITERAL 0
+112 ;
+113 while
+113 (
+113 IDENTIFIER i
+113 <
+113 IDENTIFIER N
+113 )
+113 {
+114 IDENTIFIER j
+114 =
+114 INTLITERAL 0
+114 ;
+115 IDENTIFIER inval
+115 =
+115 IDENTIFIER intcast
+115 (
+115 IDENTIFIER input
+115 (
+115 )
+115 )
+115 ;
+116 while
+116 (
+116 IDENTIFIER j
+116 <
+116 IDENTIFIER M
+116 )
+116 {
+117 IDENTIFIER t
+117 .
+117 IDENTIFIER add
+117 (
+117 IDENTIFIER inval
+117 +
+117 IDENTIFIER j
+117 )
+117 ;
+118 IDENTIFIER j
+118 =
+118 IDENTIFIER j
+118 +
+118 INTLITERAL 1
+118 ;
+119 }
+120 IDENTIFIER i
+120 =
+120 IDENTIFIER i
+120 +
+120 INTLITERAL 1
+120 ;
+121 }
+123 IDENTIFIER min
+123 =
+123 IDENTIFIER t
+123 .
+123 IDENTIFIER min
+123 (
+123 )
+123 ;
+124 IDENTIFIER max
+124 =
+124 IDENTIFIER t
+124 .
+124 IDENTIFIER max
+124 (
+124 )
+124 ;
+126 IDENTIFIER print
+126 (
+126 STRINGLITERAL "Min = "
+126 +
+126 IDENTIFIER min
+126 )
+126 ;
+127 IDENTIFIER print
+127 (
+127 STRINGLITERAL "Max = "
+127 +
+127 IDENTIFIER max
+127 )
+127 ;
+129 IDENTIFIER i
+129 =
+129 IDENTIFIER min
+129 ;
+130 IDENTIFIER missing
+130 =
+130 INTLITERAL 0
+130 ;
+131 while
+131 (
+131 IDENTIFIER i
+131 <=
+131 IDENTIFIER max
+131 )
+131 {
+132 if
+132 (
+132 !
+132 IDENTIFIER t
+132 .
+132 IDENTIFIER contains
+132 (
+132 IDENTIFIER i
+132 )
+132 )
+132 {
+133 IDENTIFIER missing
+133 =
+133 IDENTIFIER missing
+133 +
+133 INTLITERAL 1
+133 ;
+134 }
+135 IDENTIFIER i
+135 =
+135 IDENTIFIER i
+135 +
+135 INTLITERAL 1
+135 ;
+136 }
+138 IDENTIFIER print
+138 (
+138 STRINGLITERAL "Range size = "
+138 +
+138 (
+138 IDENTIFIER max
+138 -
+138 IDENTIFIER min
+138 +
+138 INTLITERAL 1
+138 )
+138 )
+138 ;
+139 IDENTIFIER print
+139 (
+139 STRINGLITERAL "Missing = "
+139 +
+139 IDENTIFIER missing
+139 )
+139 ;
+140 IDENTIFIER print
+140 (
+140 STRINGLITERAL "Length = "
+140 +
+140 IDENTIFIER t
+140 .
+140 IDENTIFIER len
+140 (
+140 )
+140 )
+140 ;
+142 IDENTIFIER print
+142 (
+142 STRINGLITERAL "After forall"
+142 )
+142 ;

@@ -1,0 +1,33 @@
+1 IDENTIFIER x
+1 =
+1 INTLITERAL 0
+1 ;
+2 IDENTIFIER y
+2 =
+2 fun
+2 (
+2 )
+2 {
+3 global
+3 IDENTIFIER x
+3 ;
+4 IDENTIFIER x
+4 =
+4 IDENTIFIER x
+4 +
+4 INTLITERAL 1
+4 ;
+5 }
+5 ;
+6 while
+6 (
+6 IDENTIFIER x
+6 <
+6 INTLITERAL 50000000
+6 )
+6 {
+7 IDENTIFIER y
+7 (
+7 )
+7 ;
+8 }

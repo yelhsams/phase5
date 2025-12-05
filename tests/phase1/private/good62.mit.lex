@@ -1,0 +1,51 @@
+1 IDENTIFIER iterations
+1 =
+1 INTLITERAL 1000
+1 ;
+3 IDENTIFIER call_depth
+3 =
+3 fun
+3 (
+3 IDENTIFIER depth
+3 )
+3 {
+4 if
+4 (
+4 IDENTIFIER depth
+4 >
+4 INTLITERAL 0
+4 )
+4 {
+5 IDENTIFIER call_depth
+5 (
+5 IDENTIFIER depth
+5 -
+5 INTLITERAL 1
+5 )
+5 ;
+6 }
+7 }
+7 ;
+9 IDENTIFIER i
+9 =
+9 INTLITERAL 0
+9 ;
+11 while
+11 (
+11 IDENTIFIER i
+11 <
+11 IDENTIFIER iterations
+11 )
+11 {
+12 IDENTIFIER call_depth
+12 (
+12 INTLITERAL 200
+12 )
+12 ;
+13 IDENTIFIER i
+13 =
+13 IDENTIFIER i
+13 +
+13 INTLITERAL 1
+13 ;
+14 }

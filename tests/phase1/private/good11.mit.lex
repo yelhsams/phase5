@@ -1,0 +1,22 @@
+1 IDENTIFIER foo
+1 =
+1 fun
+1 (
+1 )
+1 {
+2 IDENTIFIER x
+2 =
+2 INTLITERAL 5
+2 ;
+3 IDENTIFIER y
+3 =
+3 IDENTIFIER x
+3 -
+3 INTLITERAL 1
+3 ;
+4 }
+4 ;
+5 IDENTIFIER foo
+5 (
+5 )
+5 ;

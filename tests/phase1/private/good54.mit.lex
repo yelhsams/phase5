@@ -1,0 +1,20 @@
+1 IDENTIFIER x
+1 =
+1 STRINGLITERAL "foo"
+1 ;
+2 IDENTIFIER print
+2 (
+2 IDENTIFIER x
+2 )
+2 ;
+3 while
+3 (
+3 IDENTIFIER x
+3 )
+3 {
+4 IDENTIFIER print
+4 (
+4 IDENTIFIER x
+4 )
+4 ;
+5 }

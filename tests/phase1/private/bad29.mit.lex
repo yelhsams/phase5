@@ -1,0 +1,16 @@
+1 IDENTIFIER c
+1 =
+1 fun
+1 (
+1 STRINGLITERAL "a"
+1 ,
+1 STRINGLITERAL "b"
+1 )
+1 {
+2 return
+2 IDENTIFIER a
+2 +
+2 IDENTIFIER b
+2 ;
+3 }
+3 ;

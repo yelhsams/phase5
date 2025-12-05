@@ -1,0 +1,50 @@
+3 IDENTIFIER x
+3 =
+3 INTLITERAL 7
+3 ;
+4 IDENTIFIER foo
+4 =
+4 fun
+4 (
+4 IDENTIFIER x
+4 ,
+4 IDENTIFIER val
+4 )
+4 {
+5 if
+5 (
+5 IDENTIFIER x
+5 >
+5 INTLITERAL 0
+5 )
+5 {
+6 IDENTIFIER foo
+6 (
+6 IDENTIFIER x
+6 -
+6 INTLITERAL 1
+6 ,
+6 IDENTIFIER val
+6 +
+6 STRINGLITERAL "x"
+6 )
+6 ;
+7 }
+7 else
+7 {
+8 return
+8 IDENTIFIER val
+8 ;
+9 }
+10 }
+10 ;
+11 IDENTIFIER print
+11 (
+11 IDENTIFIER foo
+11 (
+11 INTLITERAL 5
+11 ,
+11 STRINGLITERAL ""
+11 )
+11 )
+11 ;

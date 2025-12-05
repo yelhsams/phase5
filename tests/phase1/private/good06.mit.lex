@@ -1,0 +1,40 @@
+1 IDENTIFIER t
+1 =
+1 fun
+1 (
+1 IDENTIFIER x
+1 )
+1 {
+2 return
+2 fun
+2 (
+2 )
+2 {
+3 return
+3 IDENTIFIER x
+3 ;
+4 }
+4 ;
+5 }
+5 ;
+7 IDENTIFIER z
+7 =
+7 IDENTIFIER t
+7 (
+7 INTLITERAL 1
+7 )
+7 ;
+8 IDENTIFIER z
+8 =
+8 IDENTIFIER t
+8 (
+8 INTLITERAL 2
+8 )
+8 ;
+10 IDENTIFIER print
+10 (
+10 IDENTIFIER z
+10 (
+10 )
+10 )
+10 ;

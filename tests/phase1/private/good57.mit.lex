@@ -1,0 +1,18 @@
+1 IDENTIFIER x
+1 =
+1 INTLITERAL 1
+1 ;
+2 IDENTIFIER print
+2 (
+2 STRINGLITERAL "calling x"
+2 )
+2 ;
+3 IDENTIFIER x
+3 (
+3 )
+3 ;
+4 IDENTIFIER print
+4 (
+4 STRINGLITERAL "called x"
+4 )
+4 ;

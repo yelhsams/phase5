@@ -1,0 +1,19 @@
+1 IDENTIFIER b
+1 =
+1 INTLITERAL 5
+1 <
+1 INTLITERAL 6
+1 ;
+2 IDENTIFIER c
+2 =
+2 INTLITERAL 7
+2 <
+2 fun
+2 (
+2 )
+2 {
+3 return
+3 INTLITERAL 8
+3 ;
+4 }
+4 ;

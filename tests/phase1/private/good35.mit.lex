@@ -1,0 +1,29 @@
+1 IDENTIFIER x
+1 =
+1 INTLITERAL 1
+1 ;
+2 IDENTIFIER f
+2 =
+2 fun
+2 (
+2 IDENTIFIER y
+2 )
+3 {
+4 IDENTIFIER g
+4 =
+4 fun
+4 (
+4 IDENTIFIER z
+4 )
+5 {
+6 return
+6 IDENTIFIER x
+6 +
+6 IDENTIFIER y
+6 +
+6 IDENTIFIER z
+6 ;
+7 }
+7 ;
+8 }
+8 ;

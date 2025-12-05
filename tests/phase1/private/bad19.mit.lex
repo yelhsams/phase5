@@ -1,0 +1,15 @@
+1 IDENTIFIER i
+1 =
+1 INTLITERAL 0
+1 ;
+2 while
+2 =
+2 INTLITERAL 7
+2 ;
+3 IDENTIFIER print
+3 (
+3 IDENTIFIER i
+3 +
+3 while
+3 )
+3 ;

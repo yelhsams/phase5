@@ -1,0 +1,28 @@
+1 IDENTIFIER iterations
+1 =
+1 INTLITERAL 1
+1 ;
+3 IDENTIFIER i
+3 =
+3 INTLITERAL 0
+3 ;
+5 while
+5 (
+5 IDENTIFIER i
+5 <
+5 IDENTIFIER iterations
+5 )
+5 {
+6 while
+6 (
+6 BOOLEANLITERAL false
+6 )
+6 {
+6 }
+7 IDENTIFIER i
+7 =
+7 IDENTIFIER i
+7 +
+7 INTLITERAL 1
+7 ;
+8 }

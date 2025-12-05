@@ -1,0 +1,19 @@
+1 IDENTIFIER x
+1 =
+1 INTLITERAL 7
+1 ;
+2 fun
+2 (
+2 )
+2 {
+3 return
+3 INTLITERAL 5
+3 ;
+4 }
+4 =
+4 INTLITERAL 6
+4 ;
+5 IDENTIFIER z
+5 =
+5 INTLITERAL 8
+5 ;

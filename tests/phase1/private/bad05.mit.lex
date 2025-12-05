@@ -1,0 +1,7 @@
+1 global
+1 INTLITERAL 6
+1 ;
+2 IDENTIFIER a
+2 =
+2 INTLITERAL 6
+2 ;

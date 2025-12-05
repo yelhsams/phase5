@@ -1,0 +1,58 @@
+2 IDENTIFIER point
+2 =
+2 {
+2 IDENTIFIER x
+2 =
+2 INTLITERAL 12
+2 ;
+2 IDENTIFIER y
+2 :
+2 INTLITERAL 24
+2 ;
+2 IDENTIFIER name
+2 :
+2 STRINGLITERAL "point1"
+2 ;
+2 }
+2 ;
+3 IDENTIFIER display
+3 =
+3 fun
+3 (
+3 IDENTIFIER pt
+3 )
+3 {
+4 IDENTIFIER print
+4 (
+4 STRINGLITERAL "Point("
+4 +
+4 IDENTIFIER pt
+4 .
+4 IDENTIFIER name
+4 +
+4 IDENTIFIER pt
+4 .
+4 IDENTIFIER name
+4 +
+4 STRINGLITERAL ", "
+4 +
+4 IDENTIFIER pt
+4 .
+4 IDENTIFIER x
+4 +
+4 STRINGLITERAL ", "
+4 +
+4 IDENTIFIER pt
+4 .
+4 IDENTIFIER y
+4 +
+4 STRINGLITERAL ")"
+4 )
+4 ;
+5 }
+5 ;
+6 IDENTIFIER display
+6 (
+6 IDENTIFIER point
+6 )
+6 ;

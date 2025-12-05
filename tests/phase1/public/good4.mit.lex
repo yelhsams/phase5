@@ -1,0 +1,51 @@
+1 IDENTIFIER foo
+1 =
+1 fun
+1 (
+1 IDENTIFIER x
+1 )
+1 {
+2 IDENTIFIER print
+2 (
+2 STRINGLITERAL "Value "
+2 +
+2 (
+2 IDENTIFIER x
+2 -
+2 INTLITERAL 1
+2 )
+2 )
+2 ;
+3 return
+3 IDENTIFIER x
+3 -
+3 INTLITERAL 1
+3 ;
+4 }
+4 ;
+5 IDENTIFIER x
+5 =
+5 IDENTIFIER intcast
+5 (
+5 IDENTIFIER input
+5 (
+5 )
+5 )
+5 ;
+6 while
+6 (
+6 IDENTIFIER x
+6 +
+6 INTLITERAL 1
+6 >
+6 INTLITERAL 0
+6 )
+6 {
+7 IDENTIFIER x
+7 =
+7 IDENTIFIER foo
+7 (
+7 IDENTIFIER x
+7 )
+7 ;
+8 }

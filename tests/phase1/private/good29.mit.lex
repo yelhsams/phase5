@@ -1,0 +1,41 @@
+1 IDENTIFIER x
+1 =
+1 INTLITERAL 0
+1 ;
+2 IDENTIFIER y
+2 =
+2 fun
+2 (
+2 )
+2 {
+3 global
+3 IDENTIFIER x
+3 ;
+4 while
+4 (
+4 IDENTIFIER x
+4 <
+4 INTLITERAL 100000000
+4 )
+4 {
+5 IDENTIFIER x
+5 =
+5 IDENTIFIER x
+5 +
+5 INTLITERAL 1
+5 ;
+6 }
+7 return
+7 IDENTIFIER x
+7 ;
+8 }
+8 ;
+9 IDENTIFIER print
+9 (
+9 STRINGLITERAL "y is "
+9 +
+9 IDENTIFIER y
+9 (
+9 )
+9 )
+9 ;

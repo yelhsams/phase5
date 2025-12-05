@@ -1,0 +1,11 @@
+1 IDENTIFIER a
+1 =
+1 INTLITERAL 6
+1 ;
+2 IDENTIFIER b
+2 =
+2 ;
+3 IDENTIFIER c
+3 =
+3 None
+3 ;

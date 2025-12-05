@@ -1,0 +1,40 @@
+1 IDENTIFIER iterations
+1 =
+1 INTLITERAL 200000
+1 ;
+3 IDENTIFIER i
+3 =
+3 INTLITERAL 0
+3 ;
+5 while
+5 (
+5 IDENTIFIER i
+5 <
+5 IDENTIFIER iterations
+5 )
+5 {
+6 IDENTIFIER x
+6 =
+6 {
+6 IDENTIFIER y
+6 :
+6 {
+6 }
+6 ;
+6 }
+6 ;
+7 IDENTIFIER x
+7 .
+7 IDENTIFIER y
+7 .
+7 IDENTIFIER x
+7 =
+7 IDENTIFIER x
+7 ;
+8 IDENTIFIER i
+8 =
+8 IDENTIFIER i
+8 +
+8 INTLITERAL 1
+8 ;
+9 }

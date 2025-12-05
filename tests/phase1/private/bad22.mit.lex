@@ -1,0 +1,24 @@
+1 IDENTIFIER b
+1 =
+1 INTLITERAL 6
+1 ;
+2 if
+2 (
+2 IDENTIFIER b
+2 ==
+2 INTLITERAL 6
+2 )
+2 {
+3 IDENTIFIER a
+3 =
+3 INTLITERAL 5
+3 ;
+4 }
+4 else
+4 {
+5 IDENTIFIER a
+5 =
+5 INTLITERAL 3
+5 ;
+6 }
+6 ;

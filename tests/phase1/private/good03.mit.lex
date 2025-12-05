@@ -1,0 +1,156 @@
+4 IDENTIFIER a
+4 =
+4 fun
+4 (
+4 IDENTIFIER i
+4 ,
+4 IDENTIFIER s
+4 ,
+4 IDENTIFIER o
+4 ,
+4 IDENTIFIER g
+4 ,
+4 IDENTIFIER r
+4 ,
+4 IDENTIFIER a
+4 ,
+4 IDENTIFIER m
+4 )
+4 {
+4 IDENTIFIER i
+4 [
+4 STRINGLITERAL "GoogleAnalyticsObject"
+4 ]
+4 =
+4 IDENTIFIER r
+4 ;
+4 IDENTIFIER i
+4 [
+4 IDENTIFIER r
+4 ]
+4 =
+4 IDENTIFIER i
+4 [
+4 IDENTIFIER r
+4 ]
+4 |
+4 IDENTIFIER i
+4 [
+4 fun
+4 (
+4 )
+4 {
+5 IDENTIFIER i
+5 [
+5 IDENTIFIER r
+5 ]
+5 .
+5 IDENTIFIER q
+5 =
+5 IDENTIFIER i
+5 [
+5 IDENTIFIER r
+5 ]
+5 .
+5 IDENTIFIER q
+5 .
+5 IDENTIFIER push
+5 (
+5 IDENTIFIER arguments
+5 )
+5 ;
+5 }
+5 ]
+5 ;
+5 IDENTIFIER i
+5 [
+5 IDENTIFIER r
+5 ]
+5 .
+5 IDENTIFIER l
+5 =
+5 INTLITERAL 1
+5 *
+5 IDENTIFIER Date
+5 (
+5 )
+5 ;
+5 IDENTIFIER a
+5 =
+5 IDENTIFIER s
+5 .
+5 IDENTIFIER createElement
+5 (
+5 IDENTIFIER o
+5 )
+5 ;
+6 IDENTIFIER m
+6 =
+6 IDENTIFIER s
+6 .
+6 IDENTIFIER getElementsByTagName
+6 (
+6 IDENTIFIER o
+6 )
+6 ;
+6 IDENTIFIER m
+6 =
+6 IDENTIFIER m
+6 [
+6 INTLITERAL 0
+6 ]
+6 ;
+6 IDENTIFIER a
+6 .
+6 IDENTIFIER async
+6 =
+6 INTLITERAL 1
+6 ;
+6 IDENTIFIER a
+6 .
+6 IDENTIFIER src
+6 =
+6 IDENTIFIER g
+6 ;
+6 IDENTIFIER m
+6 .
+6 IDENTIFIER parentNode
+6 .
+6 IDENTIFIER insertBefore
+6 (
+6 IDENTIFIER a
+6 ,
+6 IDENTIFIER m
+6 )
+7 ;
+7 }
+7 ;
+7 IDENTIFIER a
+7 (
+7 IDENTIFIER window
+7 ,
+7 IDENTIFIER document
+7 ,
+7 STRINGLITERAL "script"
+7 ,
+7 STRINGLITERAL "https://www.google-analytics.com/analytics.js"
+7 ,
+7 STRINGLITERAL "ga"
+7 )
+7 ;
+9 IDENTIFIER ga
+9 (
+9 STRINGLITERAL "create"
+9 ,
+9 STRINGLITERAL "UA-XXXXX-Y"
+9 ,
+9 STRINGLITERAL "auto"
+9 )
+9 ;
+10 IDENTIFIER ga
+10 (
+10 STRINGLITERAL "send"
+10 ,
+10 STRINGLITERAL "pageview"
+10 )
+10 ;

@@ -1,0 +1,61 @@
+1 IDENTIFIER iterations
+1 =
+1 INTLITERAL 200000
+1 ;
+3 IDENTIFIER i
+3 =
+3 INTLITERAL 0
+3 ;
+5 while
+5 (
+5 IDENTIFIER i
+5 <
+5 IDENTIFIER iterations
+5 )
+5 {
+6 IDENTIFIER y
+6 =
+6 fun
+6 (
+6 )
+6 {
+7 IDENTIFIER z
+7 =
+7 fun
+7 (
+7 IDENTIFIER x
+7 )
+7 {
+8 if
+8 (
+8 !
+8 (
+8 IDENTIFIER x
+8 ==
+8 None
+8 )
+8 )
+8 {
+9 IDENTIFIER z
+9 (
+9 None
+9 )
+9 ;
+10 }
+11 }
+11 ;
+12 }
+12 ;
+13 IDENTIFIER q
+13 =
+13 IDENTIFIER y
+13 (
+13 )
+13 ;
+14 IDENTIFIER i
+14 =
+14 IDENTIFIER i
+14 +
+14 INTLITERAL 1
+14 ;
+15 }

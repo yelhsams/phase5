@@ -1,0 +1,22 @@
+1 global
+1 fun
+1 (
+1 )
+1 {
+2 IDENTIFIER x
+2 =
+2 INTLITERAL 5
+2 ;
+3 IDENTIFIER y
+3 =
+3 INTLITERAL 4
+3 ;
+4 IDENTIFIER print
+4 (
+4 IDENTIFIER x
+4 ==
+4 IDENTIFIER y
+4 )
+4 ;
+5 }
+5 ;

@@ -1,0 +1,15 @@
+1 IDENTIFIER b
+1 =
+1 INTLITERAL 6
+1 ;
+2 else
+2 =
+2 INTLITERAL 7
+2 ;
+3 IDENTIFIER print
+3 (
+3 IDENTIFIER b
+3 +
+3 else
+3 )
+3 ;

@@ -1,0 +1,11 @@
+1 IDENTIFIER rec
+1 =
+1 {
+1 }
+1 ;
+2 IDENTIFIER rec
+2 .
+2 IDENTIFIER f
+2 =
+2 INTLITERAL 1
+2 ;

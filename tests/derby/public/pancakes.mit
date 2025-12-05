@@ -1,0 +1,229 @@
+factorial = fun(n) {
+    result = 1;
+    i = 1;
+    while (i <= n) {
+        result = result * i;
+        i = i + 1;
+    }
+    return result;
+};
+
+mod = fun(a, b) {
+    return a - (a / b) * b;
+};
+
+copy_array = fun(arr, n) {
+    result = {};
+    i = 0;
+    while (i < n) {
+        result[i] = arr[i];
+        i = i + 1;
+    }
+    return result;
+};
+
+reverse_slice = fun(arr, first) {
+    i = 0;
+    while (i < (first + 1) / 2) {
+        temp = arr[i];
+        arr[i] = arr[first - i];
+        arr[first - i] = temp;
+        i = i + 1;
+    }
+};
+
+count_flips = fun(perm, n) {
+    first = perm[0];
+    if (first == 0) {
+        return 0;
+    }
+    flips_count = 1;
+    perm_copy = copy_array(perm, n);
+    done = false;
+    while (!done) {
+        reverse_slice(perm_copy, first);
+        first = perm_copy[0];
+        if (first == 0) {
+            done = true;
+        } else {
+            flips_count = flips_count + 1;
+        }
+    }
+    return flips_count;
+};
+
+process_permutations = fun(n, start, size, rotation_swaps) {
+    p = {};
+    count = {};
+    i = 0;
+    while (i < n) {
+        p[i] = i;
+        count[i] = 0;
+        i = i + 1;
+    }
+
+    remainder = start;
+    v = n - 1;
+    while (v > 0) {
+        fact_v = factorial(v);
+        count[v] = remainder / fact_v;
+        remainder = mod(remainder, fact_v);
+        swap_count = 0;
+        while (swap_count < count[v]) {
+            // Rotate left: p[:v], p[v] = p[1:v+1], p[0]
+            first = p[0];
+            i = 0;
+            while (i < v) {
+                p[i] = p[i + 1];
+                i = i + 1;
+            }
+            p[v] = first;
+            swap_count = swap_count + 1;
+        }
+        v = v - 1;
+    }
+
+    maximum_flips = 0;
+    alternating_factor = 1;
+    checksum = 0;
+    processed = 0;
+
+    if (size < 2) {
+        perm = copy_array(p, n);
+        flips_count = count_flips(perm, n);
+        if (maximum_flips < flips_count) {
+            maximum_flips = flips_count;
+        }
+        checksum = checksum + flips_count * alternating_factor;
+    } else {
+        done = false;
+        while (processed < size) {
+            if (!done) {
+                perm = copy_array(p, n);
+                flips_count = count_flips(perm, n);
+                if (maximum_flips < flips_count) {
+                    maximum_flips = flips_count;
+                }
+                checksum = checksum + flips_count * alternating_factor;
+                alternating_factor = -alternating_factor;
+                processed = processed + 1;
+
+                if (processed < size) {
+                    if (!done) {
+                        temp = p[0];
+                        p[0] = p[1];
+                        p[1] = temp;
+
+                        perm = copy_array(p, n);
+                        flips_count = count_flips(perm, n);
+                        if (maximum_flips < flips_count) {
+                            maximum_flips = flips_count;
+                        }
+                        checksum = checksum + flips_count * alternating_factor;
+                        alternating_factor = -alternating_factor;
+                        processed = processed + 1;
+
+                        if (processed < size) {
+                            if (!done) {
+                                // Apply rotation for next permutation
+                                // Find index i where count[i] < i
+                                i = 2;
+                                found_idx = n;
+                                while (i < n) {
+                                    if (count[i] >= i) {
+                                        count[i] = 0;
+                                        i = i + 1;
+                                    } else {
+                                        found_idx = i;
+                                        i = n;
+                                    }
+                                }
+                                if (found_idx >= n) {
+                                    done = true;
+                                } else {
+                                    count[found_idx] = count[found_idx] + 1;
+                                    swaps = rotation_swaps[found_idx];
+                                    t = copy_array(p, n);
+                                    swap_idx = 0;
+                                    swap_len = swaps.length;
+                                    while (swap_idx < swap_len) {
+                                        swap_pair = swaps[swap_idx];
+                                        dst = swap_pair.dst;
+                                        src = swap_pair.src;
+                                        p[dst] = t[src];
+                                        swap_idx = swap_idx + 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                processed = size;
+            }
+        }
+    }
+
+    return { checksum : checksum; maximum : maximum_flips; };
+};
+
+task = fun(n, start, size) {
+    rotation_swaps = {};
+    i = 1;
+    while (i < n) {
+        r = {};
+        j = 0;
+        while (j < n) {
+            r[j] = j;
+            j = j + 1;
+        }
+        v = 1;
+        while (v <= i) {
+            first = r[0];
+            j = 0;
+            while (j < v) {
+                r[j] = r[j + 1];
+                j = j + 1;
+            }
+            r[v] = first;
+            v = v + 1;
+        }
+        swaps = {};
+        swap_count = 0;
+        dst = 0;
+        while (dst < n) {
+            src = r[dst];
+            if (!(dst == src)) {
+                swaps[swap_count] = { dst : dst; src : src; };
+                swap_count = swap_count + 1;
+            }
+            dst = dst + 1;
+        }
+        swaps.length = swap_count;
+        rotation_swaps[i] = swaps;
+        i = i + 1;
+    }
+
+    return process_permutations(n, start, size, rotation_swaps);
+};
+
+fannkuch = fun(n) {
+    if (n < 0) {
+        print("Inputs less than 0 not supported");
+    } else {
+        total = factorial(n);
+        task_size = total;
+
+        result = task(n, 0, task_size);
+        checksum = result.checksum;
+        maximum = result.maximum;
+
+        print(checksum);
+        print_str = "Pfannkuchen(" + n + ") = " + maximum;
+        print(print_str);
+    }
+};
+
+n = intcast(input());
+fannkuch(n);
+

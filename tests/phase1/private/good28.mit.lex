@@ -1,0 +1,25 @@
+1 IDENTIFIER x
+1 =
+1 STRINGLITERAL "a"
+1 +
+1 STRINGLITERAL "b"
+1 ;
+2 IDENTIFIER y
+2 =
+2 fun
+2 (
+2 IDENTIFIER s
+2 )
+2 {
+3 return
+3 IDENTIFIER s
+3 +
+3 INTLITERAL 1
+3 ;
+4 }
+4 ;
+5 IDENTIFIER y
+5 (
+5 IDENTIFIER x
+5 )
+5 ;

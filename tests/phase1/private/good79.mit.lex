@@ -1,0 +1,67 @@
+1 IDENTIFIER Point
+1 =
+1 fun
+1 (
+1 IDENTIFIER x
+1 ,
+1 IDENTIFIER y
+1 )
+1 {
+2 IDENTIFIER this
+2 =
+2 {
+3 IDENTIFIER x
+3 :
+3 IDENTIFIER x
+3 ;
+4 IDENTIFIER y
+4 :
+4 IDENTIFIER y
+4 ;
+5 IDENTIFIER print
+5 :
+5 fun
+5 (
+5 )
+5 {
+6 IDENTIFIER print
+6 (
+6 STRINGLITERAL "Point("
+6 +
+6 IDENTIFIER this
+6 .
+6 IDENTIFIER x
+6 +
+6 STRINGLITERAL ", "
+6 +
+6 IDENTIFIER this
+6 .
+6 IDENTIFIER y
+6 +
+6 STRINGLITERAL ")"
+6 )
+6 ;
+7 }
+7 ;
+8 }
+8 ;
+9 return
+9 IDENTIFIER this
+9 ;
+10 }
+10 ;
+12 IDENTIFIER p
+12 =
+12 IDENTIFIER Point
+12 (
+12 INTLITERAL 5
+12 ,
+12 INTLITERAL 5
+12 )
+12 ;
+13 IDENTIFIER p
+13 .
+13 IDENTIFIER print
+13 (
+13 )
+13 ;

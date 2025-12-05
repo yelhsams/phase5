@@ -1,0 +1,28 @@
+1 IDENTIFIER a
+1 =
+1 fun
+1 (
+1 )
+1 {
+2 return
+2 BOOLEANLITERAL true
+2 ;
+3 }
+3 ;
+4 IDENTIFIER i
+4 =
+4 INTLITERAL 0
+4 ;
+5 while
+5 (
+5 IDENTIFIER a
+5 (
+5 )
+5 {
+6 IDENTIFIER i
+6 =
+6 IDENTIFIER i
+6 +
+6 INTLITERAL 1
+6 ;
+7 }

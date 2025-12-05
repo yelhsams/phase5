@@ -1,0 +1,151 @@
+1 IDENTIFIER x
+1 =
+1 INTLITERAL 5
+1 ;
+2 IDENTIFIER foo
+2 =
+2 fun
+2 (
+2 IDENTIFIER a
+2 ,
+2 IDENTIFIER s
+2 ,
+2 IDENTIFIER df
+2 )
+2 {
+3 IDENTIFIER print
+3 (
+3 IDENTIFIER a
+3 )
+3 ;
+4 IDENTIFIER print
+4 (
+4 IDENTIFIER s
+4 )
+4 ;
+5 IDENTIFIER print
+5 (
+5 IDENTIFIER df
+5 )
+5 ;
+6 IDENTIFIER print
+6 (
+6 IDENTIFIER x
+6 )
+6 ;
+7 IDENTIFIER x
+7 =
+7 INTLITERAL 3
+7 ;
+8 IDENTIFIER print
+8 (
+8 IDENTIFIER x
+8 )
+8 ;
+9 IDENTIFIER foo2
+9 =
+9 fun
+9 (
+9 )
+9 {
+10 IDENTIFIER print
+10 (
+10 IDENTIFIER x
+10 )
+10 ;
+11 IDENTIFIER foo3
+11 =
+11 fun
+11 (
+11 IDENTIFIER x
+11 )
+11 {
+12 IDENTIFIER print
+12 (
+12 IDENTIFIER x
+12 )
+12 ;
+13 IDENTIFIER foo4
+13 =
+13 fun
+13 (
+13 )
+13 {
+14 IDENTIFIER print
+14 (
+14 IDENTIFIER x
+14 )
+14 ;
+15 IDENTIFIER x
+15 =
+15 INTLITERAL 9
+15 ;
+16 while
+16 (
+16 BOOLEANLITERAL false
+16 )
+16 {
+17 global
+17 IDENTIFIER x
+17 ;
+18 }
+19 IDENTIFIER foo5
+19 =
+19 fun
+19 (
+19 )
+19 {
+20 IDENTIFIER print
+20 (
+20 IDENTIFIER x
+20 +
+20 INTLITERAL 1
+20 )
+20 ;
+21 if
+21 (
+21 BOOLEANLITERAL false
+21 )
+21 {
+22 IDENTIFIER foo6
+22 =
+22 fun
+22 (
+22 )
+22 {
+22 }
+22 ;
+23 }
+24 return
+24 IDENTIFIER foo6
+24 ;
+25 }
+25 ;
+26 return
+26 IDENTIFIER foo5
+26 ;
+27 }
+27 ;
+28 return
+28 IDENTIFIER foo4
+28 ;
+29 }
+29 ;
+30 return
+30 IDENTIFIER foo3
+30 ;
+31 }
+31 ;
+32 IDENTIFIER x
+32 =
+32 INTLITERAL 4
+32 ;
+33 return
+33 IDENTIFIER foo2
+33 ;
+34 }
+34 ;
+35 IDENTIFIER a
+35 =
+35 IDENTIFIER foo
+35 ;

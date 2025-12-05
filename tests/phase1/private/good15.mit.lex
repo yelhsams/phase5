@@ -1,0 +1,12 @@
+1 IDENTIFIER print
+1 (
+1 (
+1 STRINGLITERAL "1"
+1 +
+1 IDENTIFIER intcast
+1 (
+1 STRINGLITERAL "1"
+1 )
+1 )
+1 )
+1 ;

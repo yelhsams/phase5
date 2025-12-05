@@ -1,0 +1,40 @@
+1 IDENTIFIER x
+1 =
+1 fun
+1 (
+1 IDENTIFIER t
+1 )
+1 {
+2 IDENTIFIER print
+2 (
+2 IDENTIFIER t
+2 )
+2 ;
+3 if
+3 (
+3 IDENTIFIER t
+3 <
+3 INTLITERAL 5
+3 )
+3 {
+4 return
+4 INTLITERAL 5
+4 ;
+5 }
+6 }
+6 ;
+7 IDENTIFIER x
+7 (
+7 INTLITERAL 4
+7 )
+7 ;
+8 IDENTIFIER x
+8 (
+8 INTLITERAL 6
+8 )
+8 ;
+10 IDENTIFIER print
+10 (
+10 STRINGLITERAL "hello"
+10 )
+10 ;

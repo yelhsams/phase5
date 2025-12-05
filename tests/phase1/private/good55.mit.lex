@@ -1,0 +1,31 @@
+1 IDENTIFIER x
+1 =
+1 INTLITERAL 8
+1 ;
+2 IDENTIFIER y
+2 =
+2 fun
+2 (
+2 )
+2 {
+3 IDENTIFIER print
+3 (
+3 IDENTIFIER x
+3 )
+3 ;
+4 IDENTIFIER print
+4 (
+4 IDENTIFIER y
+4 )
+4 ;
+5 IDENTIFIER print
+5 (
+5 IDENTIFIER z
+5 )
+5 ;
+6 }
+6 ;
+7 IDENTIFIER y
+7 (
+7 )
+7 ;

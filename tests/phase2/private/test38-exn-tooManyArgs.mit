@@ -1,0 +1,2 @@
+f = fun (x, y) { return x + y; };
+print(f(2, 3, 4));

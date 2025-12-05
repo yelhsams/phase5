@@ -1,0 +1,136 @@
+mod = fun(a, b) {
+    return a - (a / b) * b;
+};
+
+int_sqrt = fun(n) {
+    if (n <= 1) {
+        return n;
+    }
+    low = 1;
+    high = n;
+    result = 1;
+    while (low <= high) {
+        mid = (low + high) / 2;
+        square = mid * mid;
+        if (square == n) {
+            return mid;
+        } else {
+            if (square < n) {
+                result = mid;
+                low = mid + 1;
+            } else {
+                high = mid - 1;
+            }
+        }
+    }
+    return result;
+};
+
+init_array = fun(n, A) {
+    i = 0;
+    while (i < n) {
+        j = 0;
+        while (j <= i) {
+            j_mod_n = mod(-j, n);
+            A[i][j] = j_mod_n / n + 1;
+            j = j + 1;
+        }
+        j = i + 1;
+        while (j < n) {
+            A[i][j] = 0;
+            j = j + 1;
+        }
+        A[i][i] = 1;
+        i = i + 1;
+    }
+
+    B = {};
+    r = 0;
+    while (r < n) {
+        B[r] = {};
+        s = 0;
+        while (s < n) {
+            B[r][s] = 0;
+            s = s + 1;
+        }
+        r = r + 1;
+    }
+
+    t = 0;
+    while (t < n) {
+        r = 0;
+        while (r < n) {
+            s = 0;
+            while (s < n) {
+                B[r][s] = B[r][s] + A[r][t] * A[s][t];
+                s = s + 1;
+            }
+            r = r + 1;
+        }
+        t = t + 1;
+    }
+
+    r = 0;
+    while (r < n) {
+        s = 0;
+        while (s < n) {
+            A[r][s] = B[r][s];
+            s = s + 1;
+        }
+        r = r + 1;
+    }
+};
+
+cholesky = fun(n, A) {
+    i = 0;
+    while (i < n) {
+        j = 0;
+        while (j < i) {
+            k = 0;
+            while (k < j) {
+                A[i][j] = A[i][j] - A[i][k] * A[j][k];
+                k = k + 1;
+            }
+            A[i][j] = A[i][j] / A[j][j];
+            j = j + 1;
+        }
+        k = 0;
+        while (k < i) {
+            A[i][i] = A[i][i] - A[i][k] * A[i][k];
+            k = k + 1;
+        }
+        A[i][i] = int_sqrt(A[i][i]);
+        i = i + 1;
+    }
+};
+
+n = intcast(input());
+
+A = {};
+i = 0;
+while (i < n) {
+    A[i] = {};
+    j = 0;
+    while (j < n) {
+        A[i][j] = 0;
+        j = j + 1;
+    }
+    i = i + 1;
+}
+
+init_array(n, A);
+cholesky(n, A);
+
+checksum = 0;
+i = 0;
+while (i < n) {
+    j = 0;
+    while (j <= i) {
+        checksum = checksum + A[i][j];
+        j = j + 1;
+    }
+    i = i + 1;
+}
+
+print(checksum);
+

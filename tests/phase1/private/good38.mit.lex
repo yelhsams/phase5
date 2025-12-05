@@ -1,0 +1,221 @@
+1 IDENTIFIER kArraySize
+1 =
+1 INTLITERAL 500000
+1 ;
+3 IDENTIFIER Array
+3 =
+3 fun
+3 (
+3 IDENTIFIER size
+3 )
+3 {
+4 IDENTIFIER this
+4 =
+4 {
+5 IDENTIFIER put
+5 :
+5 fun
+5 (
+5 IDENTIFIER idx
+5 ,
+5 IDENTIFIER val
+5 )
+5 {
+6 if
+6 (
+6 IDENTIFIER idx
+6 <
+6 IDENTIFIER size
+6 )
+6 {
+7 IDENTIFIER this
+7 [
+7 IDENTIFIER idx
+7 ]
+7 =
+7 IDENTIFIER val
+7 ;
+8 }
+8 else
+8 {
+9 IDENTIFIER print
+9 (
+9 STRINGLITERAL "Index "
+9 +
+9 IDENTIFIER idx
+9 +
+9 STRINGLITERAL " out of bounds "
+9 )
+9 ;
+10 }
+11 }
+11 ;
+12 IDENTIFIER get
+12 :
+12 fun
+12 (
+12 IDENTIFIER idx
+12 )
+12 {
+13 if
+13 (
+13 IDENTIFIER idx
+13 <
+13 IDENTIFIER size
+13 )
+13 {
+14 return
+14 IDENTIFIER this
+14 [
+14 IDENTIFIER idx
+14 ]
+14 ;
+15 }
+15 else
+15 {
+16 IDENTIFIER print
+16 (
+16 STRINGLITERAL "Index "
+16 +
+16 IDENTIFIER idx
+16 +
+16 STRINGLITERAL " out of bounds "
+16 )
+16 ;
+17 }
+18 }
+18 ;
+19 IDENTIFIER getSize
+19 :
+19 fun
+19 (
+19 )
+19 {
+20 return
+20 IDENTIFIER size
+20 ;
+21 }
+21 ;
+22 IDENTIFIER print
+22 :
+22 fun
+22 (
+22 )
+22 {
+23 IDENTIFIER i
+23 =
+23 INTLITERAL 0
+23 ;
+24 IDENTIFIER out
+24 =
+24 STRINGLITERAL ""
+24 ;
+25 while
+25 (
+25 IDENTIFIER i
+25 <
+25 IDENTIFIER size
+25 )
+25 {
+26 IDENTIFIER out
+26 =
+26 IDENTIFIER out
+26 +
+26 IDENTIFIER this
+26 .
+26 IDENTIFIER get
+26 (
+26 IDENTIFIER i
+26 )
+26 +
+26 STRINGLITERAL " "
+26 ;
+27 IDENTIFIER i
+27 =
+27 IDENTIFIER i
+27 +
+27 INTLITERAL 1
+27 ;
+28 }
+29 IDENTIFIER print
+29 (
+29 STRINGLITERAL "["
+29 +
+29 IDENTIFIER out
+29 +
+29 STRINGLITERAL "]"
+29 )
+29 ;
+30 }
+30 ;
+32 }
+32 ;
+33 return
+33 IDENTIFIER this
+33 ;
+34 }
+34 ;
+37 IDENTIFIER fillArray
+37 =
+37 fun
+37 (
+37 IDENTIFIER arr
+37 )
+37 {
+38 IDENTIFIER i
+38 =
+38 INTLITERAL 0
+38 ;
+39 while
+39 (
+39 IDENTIFIER i
+39 <
+39 IDENTIFIER arr
+39 .
+39 IDENTIFIER getSize
+39 (
+39 )
+39 )
+39 {
+40 IDENTIFIER arr
+40 .
+40 IDENTIFIER put
+40 (
+40 IDENTIFIER i
+40 ,
+40 STRINGLITERAL "hi"
+40 )
+40 ;
+41 IDENTIFIER i
+41 =
+41 IDENTIFIER i
+41 +
+41 INTLITERAL 1
+41 ;
+42 }
+43 }
+43 ;
+46 IDENTIFIER print
+46 (
+46 STRINGLITERAL "Garbage collector bench3.mit"
+46 )
+46 ;
+49 IDENTIFIER print
+49 (
+49 STRINGLITERAL " Creating a long-lived array of "
+50 +
+50 IDENTIFIER kArraySize
+50 )
+50 ;
+51 IDENTIFIER arr
+51 =
+51 IDENTIFIER Array
+51 (
+51 IDENTIFIER kArraySize
+51 )
+51 ;
+52 IDENTIFIER fillArray
+52 (
+52 IDENTIFIER arr
+52 )
+52 ;

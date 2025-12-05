@@ -1,0 +1,37 @@
+1 IDENTIFIER print
+1 (
+1 STRINGLITERAL "Hello"
+1 )
+1 ;
+2 IDENTIFIER oldprint
+2 =
+2 IDENTIFIER print
+2 ;
+3 IDENTIFIER print
+3 =
+3 fun
+3 (
+3 IDENTIFIER s
+3 )
+3 {
+4 IDENTIFIER oldprint
+4 (
+4 STRINGLITERAL "OUTPUT: "
+4 +
+4 IDENTIFIER s
+4 )
+4 ;
+5 }
+5 ;
+6 IDENTIFIER print
+6 (
+6 STRINGLITERAL "Hello"
+6 )
+6 ;
+7 IDENTIFIER print
+7 (
+7 INTLITERAL 7
+7 /
+7 INTLITERAL 0
+7 )
+7 ;

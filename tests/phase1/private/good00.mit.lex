@@ -1,0 +1,5 @@
+1 IDENTIFIER print
+1 (
+1 INTLITERAL 3
+1 )
+1 ;

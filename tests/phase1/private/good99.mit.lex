@@ -1,0 +1,476 @@
+1 IDENTIFIER Array
+1 =
+1 fun
+1 (
+1 )
+1 {
+2 IDENTIFIER this
+2 =
+2 {
+3 IDENTIFIER length
+3 :
+3 INTLITERAL 0
+3 ;
+4 IDENTIFIER append
+4 :
+4 fun
+4 (
+4 IDENTIFIER item
+4 )
+4 {
+5 IDENTIFIER this
+5 [
+5 IDENTIFIER this
+5 .
+5 IDENTIFIER length
+5 ]
+5 =
+5 IDENTIFIER item
+5 ;
+6 IDENTIFIER this
+6 .
+6 IDENTIFIER length
+6 =
+6 IDENTIFIER this
+6 .
+6 IDENTIFIER length
+6 +
+6 INTLITERAL 1
+6 ;
+7 }
+7 ;
+8 IDENTIFIER string
+8 :
+8 fun
+8 (
+8 )
+8 {
+9 IDENTIFIER i
+9 =
+9 INTLITERAL 0
+9 ;
+10 IDENTIFIER x
+10 =
+10 STRINGLITERAL "["
+10 ;
+11 while
+11 (
+11 IDENTIFIER i
+11 <
+11 IDENTIFIER this
+11 .
+11 IDENTIFIER length
+11 )
+11 {
+12 IDENTIFIER x
+12 =
+12 IDENTIFIER x
+12 +
+12 IDENTIFIER this
+12 [
+12 IDENTIFIER i
+12 ]
+12 ;
+13 if
+13 (
+13 !
+13 (
+13 IDENTIFIER i
+13 ==
+13 IDENTIFIER this
+13 .
+13 IDENTIFIER length
+13 -
+13 INTLITERAL 1
+13 )
+13 )
+13 {
+14 IDENTIFIER x
+14 =
+14 IDENTIFIER x
+14 +
+14 STRINGLITERAL ", "
+14 ;
+15 }
+16 IDENTIFIER i
+16 =
+16 IDENTIFIER i
+16 +
+16 INTLITERAL 1
+16 ;
+17 }
+18 return
+18 IDENTIFIER x
+18 +
+18 STRINGLITERAL "]"
+18 ;
+19 }
+19 ;
+20 IDENTIFIER splice
+20 :
+20 fun
+20 (
+20 IDENTIFIER start
+20 ,
+20 IDENTIFIER stop
+20 )
+20 {
+21 IDENTIFIER result
+21 =
+21 IDENTIFIER Array
+21 (
+21 )
+21 ;
+22 while
+22 (
+22 IDENTIFIER start
+22 <
+22 IDENTIFIER stop
+22 )
+22 {
+23 IDENTIFIER result
+23 .
+23 IDENTIFIER append
+23 (
+23 IDENTIFIER this
+23 [
+23 IDENTIFIER start
+23 ]
+23 )
+23 ;
+24 IDENTIFIER start
+24 =
+24 IDENTIFIER start
+24 +
+24 INTLITERAL 1
+24 ;
+25 }
+26 return
+26 IDENTIFIER result
+26 ;
+27 }
+27 ;
+28 }
+28 ;
+29 return
+29 IDENTIFIER this
+29 ;
+30 }
+30 ;
+32 IDENTIFIER mergesort
+32 =
+32 fun
+32 (
+32 IDENTIFIER arr
+32 )
+32 {
+33 if
+33 (
+33 IDENTIFIER arr
+33 .
+33 IDENTIFIER length
+33 <
+33 INTLITERAL 2
+33 )
+33 {
+34 return
+34 IDENTIFIER arr
+34 ;
+35 }
+36 IDENTIFIER first_half
+36 =
+36 IDENTIFIER mergesort
+36 (
+36 IDENTIFIER arr
+36 .
+36 IDENTIFIER splice
+36 (
+36 INTLITERAL 0
+36 ,
+36 IDENTIFIER arr
+36 .
+36 IDENTIFIER length
+36 /
+36 INTLITERAL 2
+36 )
+36 )
+36 ;
+37 IDENTIFIER second_half
+37 =
+37 IDENTIFIER mergesort
+37 (
+37 IDENTIFIER arr
+37 .
+37 IDENTIFIER splice
+37 (
+37 IDENTIFIER arr
+37 .
+37 IDENTIFIER length
+37 /
+37 INTLITERAL 2
+37 ,
+37 IDENTIFIER arr
+37 .
+37 IDENTIFIER length
+37 )
+37 )
+37 ;
+38 IDENTIFIER result
+38 =
+38 IDENTIFIER Array
+38 (
+38 )
+38 ;
+39 IDENTIFIER first_i
+39 =
+39 INTLITERAL 0
+39 ;
+40 IDENTIFIER second_i
+40 =
+40 INTLITERAL 0
+40 ;
+41 while
+41 (
+41 IDENTIFIER first_i
+41 <
+41 IDENTIFIER first_half
+41 .
+41 IDENTIFIER length
+41 &
+41 IDENTIFIER second_i
+41 <
+41 IDENTIFIER second_half
+41 .
+41 IDENTIFIER length
+41 )
+41 {
+42 if
+42 (
+42 IDENTIFIER first_half
+42 [
+42 IDENTIFIER first_i
+42 ]
+42 <
+42 IDENTIFIER second_half
+42 [
+42 IDENTIFIER second_i
+42 ]
+42 )
+42 {
+43 IDENTIFIER result
+43 .
+43 IDENTIFIER append
+43 (
+43 IDENTIFIER first_half
+43 [
+43 IDENTIFIER first_i
+43 ]
+43 )
+43 ;
+44 IDENTIFIER first_i
+44 =
+44 IDENTIFIER first_i
+44 +
+44 INTLITERAL 1
+44 ;
+45 }
+45 else
+45 {
+46 IDENTIFIER result
+46 .
+46 IDENTIFIER append
+46 (
+46 IDENTIFIER second_half
+46 [
+46 IDENTIFIER second_i
+46 ]
+46 )
+46 ;
+47 IDENTIFIER second_i
+47 =
+47 IDENTIFIER second_i
+47 +
+47 INTLITERAL 1
+47 ;
+48 }
+49 }
+50 while
+50 (
+50 IDENTIFIER first_i
+50 <
+50 IDENTIFIER first_half
+50 .
+50 IDENTIFIER length
+50 )
+50 {
+51 IDENTIFIER result
+51 .
+51 IDENTIFIER append
+51 (
+51 IDENTIFIER first_half
+51 [
+51 IDENTIFIER first_i
+51 ]
+51 )
+51 ;
+52 IDENTIFIER first_i
+52 =
+52 IDENTIFIER first_i
+52 +
+52 INTLITERAL 1
+52 ;
+53 }
+54 while
+54 (
+54 IDENTIFIER second_i
+54 <
+54 IDENTIFIER second_half
+54 .
+54 IDENTIFIER length
+54 )
+54 {
+55 IDENTIFIER result
+55 .
+55 IDENTIFIER append
+55 (
+55 IDENTIFIER second_half
+55 [
+55 IDENTIFIER second_i
+55 ]
+55 )
+55 ;
+56 IDENTIFIER second_i
+56 =
+56 IDENTIFIER second_i
+56 +
+56 INTLITERAL 1
+56 ;
+57 }
+58 return
+58 IDENTIFIER result
+58 ;
+59 }
+59 ;
+61 IDENTIFIER unsorted
+61 =
+61 IDENTIFIER Array
+61 (
+61 )
+61 ;
+62 IDENTIFIER unsorted
+62 .
+62 IDENTIFIER append
+62 (
+62 INTLITERAL 5
+62 )
+62 ;
+63 IDENTIFIER unsorted
+63 .
+63 IDENTIFIER append
+63 (
+63 INTLITERAL 59
+63 )
+63 ;
+64 IDENTIFIER unsorted
+64 .
+64 IDENTIFIER append
+64 (
+64 -
+64 INTLITERAL 1
+64 )
+64 ;
+65 IDENTIFIER unsorted
+65 .
+65 IDENTIFIER append
+65 (
+65 INTLITERAL 3
+65 )
+65 ;
+66 IDENTIFIER unsorted
+66 .
+66 IDENTIFIER append
+66 (
+66 INTLITERAL 2
+66 )
+66 ;
+67 IDENTIFIER unsorted
+67 .
+67 IDENTIFIER append
+67 (
+67 INTLITERAL 5
+67 )
+67 ;
+68 IDENTIFIER unsorted
+68 .
+68 IDENTIFIER append
+68 (
+68 INTLITERAL 30
+68 )
+68 ;
+69 IDENTIFIER unsorted
+69 .
+69 IDENTIFIER append
+69 (
+69 INTLITERAL 1
+69 )
+69 ;
+71 IDENTIFIER N
+71 =
+71 INTLITERAL 500
+71 ;
+72 while
+72 (
+72 IDENTIFIER N
+72 >
+72 INTLITERAL 0
+72 )
+72 {
+73 IDENTIFIER unsorted
+73 .
+73 IDENTIFIER append
+73 (
+73 IDENTIFIER N
+73 )
+73 ;
+74 IDENTIFIER N
+74 =
+74 IDENTIFIER N
+74 -
+74 INTLITERAL 1
+74 ;
+75 }
+77 IDENTIFIER print
+77 (
+77 STRINGLITERAL "Unsorted array"
+77 )
+77 ;
+78 IDENTIFIER print
+78 (
+78 IDENTIFIER unsorted
+78 .
+78 IDENTIFIER string
+78 (
+78 )
+78 )
+78 ;
+79 IDENTIFIER sorted
+79 =
+79 IDENTIFIER mergesort
+79 (
+79 IDENTIFIER unsorted
+79 )
+79 ;
+80 IDENTIFIER print
+80 (
+80 STRINGLITERAL "Sorted array"
+80 )
+80 ;
+81 IDENTIFIER print
+81 (
+81 IDENTIFIER sorted
+81 .
+81 IDENTIFIER string
+81 (
+81 )
+81 )
+81 ;

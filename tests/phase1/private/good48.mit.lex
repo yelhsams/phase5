@@ -1,0 +1,109 @@
+1 IDENTIFIER debugprint
+1 =
+1 IDENTIFIER print
+1 ;
+2 IDENTIFIER oldprint
+2 =
+2 IDENTIFIER print
+2 ;
+3 IDENTIFIER print
+3 =
+3 fun
+3 (
+3 IDENTIFIER x
+3 )
+3 {
+4 IDENTIFIER debugprint
+4 (
+4 STRINGLITERAL "Inside S1 "
+4 )
+4 ;
+5 IDENTIFIER oldprint
+5 (
+5 (
+5 STRINGLITERAL "--> "
+5 )
+5 +
+5 (
+5 IDENTIFIER x
+5 )
+5 )
+5 ;
+6 }
+6 ;
+7 IDENTIFIER f
+7 =
+7 fun
+7 (
+7 IDENTIFIER x
+7 )
+7 {
+8 IDENTIFIER print
+8 (
+8 IDENTIFIER x
+8 )
+8 ;
+9 IDENTIFIER getprint
+9 =
+9 fun
+9 (
+9 )
+9 {
+10 return
+10 IDENTIFIER print
+10 ;
+11 }
+11 ;
+12 IDENTIFIER f
+12 =
+12 fun
+12 (
+12 IDENTIFIER x
+12 )
+12 {
+13 IDENTIFIER print
+13 (
+13 IDENTIFIER x
+13 )
+13 ;
+14 }
+14 ;
+15 global
+15 IDENTIFIER print
+15 ;
+16 IDENTIFIER oldprint
+16 =
+16 IDENTIFIER print
+16 ;
+17 IDENTIFIER print
+17 =
+17 fun
+17 (
+17 IDENTIFIER x
+17 )
+17 {
+18 IDENTIFIER oldprint
+18 (
+18 (
+18 STRINGLITERAL "--> "
+18 )
+18 +
+18 (
+18 IDENTIFIER x
+18 )
+18 )
+18 ;
+19 }
+19 ;
+20 IDENTIFIER f
+20 (
+20 STRINGLITERAL "This is getting confusing."
+20 )
+20 ;
+21 }
+21 ;
+22 IDENTIFIER f
+22 (
+22 STRINGLITERAL "TEST1"
+22 )
+22 ;

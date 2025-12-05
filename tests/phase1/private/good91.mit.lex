@@ -1,0 +1,15 @@
+1 IDENTIFIER print
+1 (
+1 STRINGLITERAL "hello"
+1 )
+1 ;
+2 IDENTIFIER bad
+2 =
+2 (
+2 INTLITERAL 4
+2 )
+2 /
+2 (
+2 INTLITERAL 0
+2 )
+2 ;

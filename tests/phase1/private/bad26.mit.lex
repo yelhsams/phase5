@@ -1,0 +1,13 @@
+1 IDENTIFIER x
+1 =
+1 fun
+1 (
+1 )
+1 {
+2 return
+2 IDENTIFIER y
+2 =
+2 INTLITERAL 3
+2 ;
+3 }
+3 ;

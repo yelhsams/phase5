@@ -1,0 +1,20 @@
+1 IDENTIFIER z
+1 =
+1 INTLITERAL 1
+1 ;
+2 IDENTIFIER print
+2 (
+2 IDENTIFIER z
+2 )
+2 ;
+3 if
+3 (
+3 IDENTIFIER z
+3 )
+3 {
+4 IDENTIFIER print
+4 (
+4 STRINGLITERAL "made it here"
+4 )
+4 ;
+5 }

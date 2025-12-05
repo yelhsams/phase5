@@ -1,0 +1,26 @@
+1 IDENTIFIER x
+1 =
+1 STRINGLITERAL "foo"
+1 ;
+2 IDENTIFIER print
+2 (
+2 STRINGLITERAL "setting beginning of x"
+2 )
+2 ;
+3 IDENTIFIER x
+3 [
+3 INTLITERAL 0
+3 ]
+3 =
+3 INTLITERAL 4
+3 ;
+4 IDENTIFIER print
+4 (
+4 STRINGLITERAL "beginning is now "
+4 +
+4 IDENTIFIER x
+4 [
+4 INTLITERAL 0
+4 ]
+4 )
+4 ;

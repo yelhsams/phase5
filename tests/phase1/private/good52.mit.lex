@@ -1,0 +1,30 @@
+1 IDENTIFIER x
+1 =
+1 INTLITERAL 1
+1 ;
+2 IDENTIFIER y
+2 =
+2 fun
+2 (
+2 )
+2 {
+3 IDENTIFIER print
+3 (
+3 STRINGLITERAL "hello world"
+3 )
+3 ;
+4 return
+4 INTLITERAL 2
+4 ;
+5 }
+5 ;
+6 IDENTIFIER print
+6 (
+6 IDENTIFIER x
+6 [
+6 IDENTIFIER y
+6 (
+6 )
+6 ]
+6 )
+6 ;

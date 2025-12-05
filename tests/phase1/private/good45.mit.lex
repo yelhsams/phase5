@@ -1,0 +1,171 @@
+1 IDENTIFIER thingsILike
+1 =
+1 {
+2 IDENTIFIER eating
+2 :
+2 INTLITERAL 4
+2 ;
+3 IDENTIFIER doinghw
+3 :
+3 -
+3 INTLITERAL 1
+3 ;
+4 IDENTIFIER drawing
+4 :
+4 INTLITERAL 4
+4 ;
+5 IDENTIFIER wo
+5 :
+5 fun
+5 (
+5 )
+5 {
+6 return
+6 INTLITERAL 5
+6 ;
+7 }
+7 ;
+8 }
+8 ;
+10 IDENTIFIER print
+10 (
+10 IDENTIFIER thingsILike
+10 .
+10 IDENTIFIER wo
+10 (
+10 )
+10 )
+10 ;
+13 IDENTIFIER thingsILike
+13 .
+13 IDENTIFIER wo
+13 =
+13 fun
+13 (
+13 IDENTIFIER x
+13 )
+13 {
+14 return
+14 IDENTIFIER x
+14 +
+14 STRINGLITERAL "hey"
+14 ;
+15 }
+15 ;
+16 IDENTIFIER print
+16 (
+16 IDENTIFIER thingsILike
+16 .
+16 IDENTIFIER wo
+16 (
+16 STRINGLITERAL "sup"
+16 )
+16 )
+16 ;
+18 IDENTIFIER str
+18 =
+18 STRINGLITERAL "wo"
+18 ;
+19 IDENTIFIER thingsILike
+19 [
+19 IDENTIFIER str
+19 ]
+19 =
+19 fun
+19 (
+19 IDENTIFIER x
+19 )
+19 {
+20 return
+20 IDENTIFIER x
+20 ;
+21 }
+21 ;
+22 IDENTIFIER print
+22 (
+22 IDENTIFIER thingsILike
+22 .
+22 IDENTIFIER wo
+22 (
+22 None
+22 )
+22 )
+22 ;
+23 IDENTIFIER print
+23 (
+23 IDENTIFIER thingsILike
+23 [
+23 IDENTIFIER str
+23 ]
+23 (
+23 None
+23 )
+23 )
+23 ;
+24 IDENTIFIER print
+24 (
+24 IDENTIFIER thingsILike
+24 [
+24 IDENTIFIER str
+24 ]
+24 (
+24 IDENTIFIER thingsILike
+24 .
+24 IDENTIFIER wo
+24 (
+24 None
+24 )
+24 )
+24 )
+24 ;
+26 IDENTIFIER thingsILike
+26 .
+26 IDENTIFIER wo
+26 =
+26 {
+26 }
+26 ;
+27 IDENTIFIER print
+27 (
+27 IDENTIFIER thingsILike
+27 .
+27 IDENTIFIER wo
+27 )
+27 ;
+29 IDENTIFIER cat
+29 =
+29 IDENTIFIER thingsILike
+29 .
+29 IDENTIFIER wo
+29 ;
+30 if
+30 (
+30 IDENTIFIER cat
+30 ==
+30 IDENTIFIER thingsILike
+30 .
+30 IDENTIFIER wo
+30 )
+30 {
+31 IDENTIFIER print
+31 (
+31 STRINGLITERAL "they equal"
+31 )
+31 ;
+32 }
+32 else
+32 {
+34 }
+36 IDENTIFIER thingsILike
+36 .
+36 IDENTIFIER wo
+36 =
+36 INTLITERAL 5
+36 ;
+37 IDENTIFIER print
+37 (
+37 IDENTIFIER thingsILike
+37 .
+37 IDENTIFIER wo
+37 )
+37 ;

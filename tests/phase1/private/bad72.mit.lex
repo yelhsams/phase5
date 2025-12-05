@@ -1,0 +1,20 @@
+1 IDENTIFIER x
+1 =
+1 fun
+1 (
+1 IDENTIFIER y
+1 )
+1 {
+2 return
+2 IDENTIFIER y
+2 +
+2 INTLITERAL 2
+2 ;
+3 }
+3 ;
+5 IDENTIFIER z
+5 =
+5 IDENTIFIER x
+5 (
+5 INTLITERAL 5
+5 ;

@@ -1,0 +1,51 @@
+1 IDENTIFIER manycars
+1 =
+1 fun
+1 (
+1 IDENTIFIER n
+1 )
+1 {
+2 IDENTIFIER carmap
+2 =
+2 {
+2 IDENTIFIER n
+2 :
+2 IDENTIFIER n
+2 ;
+2 }
+2 ;
+3 IDENTIFIER print
+3 (
+3 STRINGLITERAL "gets here"
+3 )
+3 ;
+4 IDENTIFIER print
+4 (
+4 IDENTIFIER carmap
+4 )
+4 ;
+5 IDENTIFIER n
+5 =
+5 IDENTIFIER n
+5 -
+5 INTLITERAL 1
+5 ;
+6 IDENTIFIER print
+6 (
+6 IDENTIFIER n
+6 )
+6 ;
+7 }
+7 ;
+9 IDENTIFIER cars
+9 =
+9 IDENTIFIER manycars
+9 (
+9 INTLITERAL 10
+9 )
+9 ;
+11 IDENTIFIER print
+11 (
+11 STRINGLITERAL "hello"
+11 )
+11 ;

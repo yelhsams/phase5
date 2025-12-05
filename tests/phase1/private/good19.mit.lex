@@ -1,0 +1,28 @@
+1 IDENTIFIER x
+1 =
+1 INTLITERAL 0
+1 ;
+2 while
+2 (
+2 IDENTIFIER x
+2 <
+2 INTLITERAL 5
+2 )
+2 {
+3 IDENTIFIER print
+3 (
+3 IDENTIFIER x
+3 )
+3 ;
+4 IDENTIFIER x
+4 =
+4 IDENTIFIER x
+4 +
+4 INTLITERAL 1
+4 ;
+5 }
+6 IDENTIFIER print
+6 (
+6 STRINGLITERAL "done!"
+6 )
+6 ;

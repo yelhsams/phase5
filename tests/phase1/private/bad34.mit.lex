@@ -1,0 +1,19 @@
+1 IDENTIFIER b
+1 =
+1 BOOLEANLITERAL true
+1 |
+1 BOOLEANLITERAL false
+1 ;
+2 IDENTIFIER c
+2 =
+2 IDENTIFIER b
+2 |
+2 fun
+2 (
+2 )
+2 {
+3 return
+3 BOOLEANLITERAL false
+3 ;
+4 }
+4 ;

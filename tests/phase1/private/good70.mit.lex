@@ -1,0 +1,195 @@
+1 IDENTIFIER Array
+1 =
+1 fun
+1 (
+1 )
+1 {
+2 IDENTIFIER this
+2 =
+2 {
+3 IDENTIFIER get
+3 :
+3 fun
+3 (
+3 IDENTIFIER index
+3 )
+3 {
+4 return
+4 IDENTIFIER this
+4 .
+4 IDENTIFIER array
+4 [
+4 STRINGLITERAL "_"
+4 +
+4 IDENTIFIER index
+4 ]
+4 ;
+5 }
+5 ;
+7 IDENTIFIER set
+7 :
+7 fun
+7 (
+7 IDENTIFIER index
+7 ,
+7 IDENTIFIER value
+7 )
+7 {
+8 IDENTIFIER this
+8 .
+8 IDENTIFIER array
+8 [
+8 STRINGLITERAL "_"
+8 +
+8 IDENTIFIER index
+8 ]
+8 =
+8 IDENTIFIER value
+8 ;
+9 if
+9 (
+9 IDENTIFIER index
+9 >
+9 IDENTIFIER this
+9 .
+9 IDENTIFIER arraySize
+9 -
+9 INTLITERAL 1
+9 )
+9 {
+10 IDENTIFIER this
+10 .
+10 IDENTIFIER arraySize
+10 =
+10 IDENTIFIER index
+10 +
+10 INTLITERAL 1
+10 ;
+11 }
+12 }
+12 ;
+14 IDENTIFIER append
+14 :
+14 fun
+14 (
+14 IDENTIFIER value
+14 )
+14 {
+15 IDENTIFIER this
+15 .
+15 IDENTIFIER array
+15 [
+15 STRINGLITERAL "_"
+15 +
+15 IDENTIFIER this
+15 .
+15 IDENTIFIER arraySize
+15 ]
+15 =
+15 IDENTIFIER value
+15 ;
+16 IDENTIFIER this
+16 .
+16 IDENTIFIER arraySize
+16 =
+16 IDENTIFIER this
+16 .
+16 IDENTIFIER arraySize
+16 +
+16 INTLITERAL 1
+16 ;
+17 }
+17 ;
+19 IDENTIFIER size
+19 :
+19 fun
+19 (
+19 )
+19 {
+20 return
+20 IDENTIFIER this
+20 .
+20 IDENTIFIER arraySize
+20 ;
+21 }
+21 ;
+23 IDENTIFIER array
+23 :
+23 {
+23 }
+23 ;
+24 IDENTIFIER arraySize
+24 :
+24 INTLITERAL 0
+24 ;
+25 }
+25 ;
+27 return
+27 IDENTIFIER this
+27 ;
+28 }
+28 ;
+30 IDENTIFIER i
+30 =
+30 INTLITERAL 160
+30 ;
+31 while
+31 (
+31 IDENTIFIER i
+31 >=
+31 INTLITERAL 0
+31 )
+31 {
+32 IDENTIFIER myArray
+32 =
+32 IDENTIFIER Array
+32 (
+32 )
+32 ;
+33 IDENTIFIER j
+33 =
+33 INTLITERAL 100
+33 ;
+34 while
+34 (
+34 IDENTIFIER j
+34 >=
+34 INTLITERAL 0
+34 )
+34 {
+35 IDENTIFIER arraySize
+35 =
+35 IDENTIFIER myArray
+35 .
+35 IDENTIFIER size
+35 (
+35 )
+35 ;
+36 IDENTIFIER myArray
+36 .
+36 IDENTIFIER append
+36 (
+36 IDENTIFIER arraySize
+36 )
+36 ;
+37 IDENTIFIER j
+37 =
+37 IDENTIFIER j
+37 -
+37 INTLITERAL 1
+37 ;
+38 }
+39 IDENTIFIER print
+39 (
+39 STRINGLITERAL "i: "
+39 +
+39 IDENTIFIER i
+39 )
+39 ;
+40 IDENTIFIER i
+40 =
+40 IDENTIFIER i
+40 -
+40 INTLITERAL 1
+40 ;
+41 }

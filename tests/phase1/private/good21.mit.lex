@@ -1,0 +1,100 @@
+1 IDENTIFIER List
+1 =
+1 fun
+1 (
+1 )
+1 {
+2 IDENTIFIER this
+2 =
+2 {
+3 IDENTIFIER head
+3 :
+3 None
+3 ;
+4 IDENTIFIER len
+4 :
+4 fun
+4 (
+4 )
+4 {
+5 return
+5 INTLITERAL 0
+5 ;
+6 }
+6 ;
+7 IDENTIFIER add
+7 :
+7 fun
+7 (
+7 IDENTIFIER v
+7 )
+7 {
+8 IDENTIFIER this
+8 .
+8 IDENTIFIER head
+8 =
+8 {
+9 IDENTIFIER len
+9 :
+9 IDENTIFIER this
+9 .
+9 IDENTIFIER len
+9 (
+9 )
+9 +
+9 INTLITERAL 1
+9 ;
+10 IDENTIFIER car
+10 :
+10 IDENTIFIER v
+10 ;
+11 IDENTIFIER cdr
+11 :
+11 IDENTIFIER this
+11 .
+11 IDENTIFIER head
+11 ;
+12 }
+12 ;
+13 }
+13 ;
+14 }
+14 ;
+15 return
+15 IDENTIFIER this
+15 ;
+16 }
+16 ;
+18 IDENTIFIER l
+18 =
+18 IDENTIFIER List
+18 (
+18 )
+18 ;
+19 IDENTIFIER i
+19 =
+19 INTLITERAL 0
+19 ;
+20 while
+20 (
+20 IDENTIFIER i
+20 <
+20 IDENTIFIER N
+20 )
+20 {
+21 IDENTIFIER l
+21 .
+21 IDENTIFIER add
+21 (
+21 IDENTIFIER input
+21 (
+21 )
+21 )
+21 ;
+22 IDENTIFIER i
+22 =
+22 IDENTIFIER i
+22 +
+22 INTLITERAL 1
+22 ;
+23 }

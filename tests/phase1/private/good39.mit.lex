@@ -1,0 +1,374 @@
+1 IDENTIFIER kMinTreeDepth
+1 =
+1 INTLITERAL 4
+1 ;
+2 IDENTIFIER kMaxTreeDepth
+2 =
+2 INTLITERAL 12
+2 ;
+3 IDENTIFIER kNumIters
+3 =
+3 INTLITERAL 1024
+3 ;
+6 IDENTIFIER Node
+6 =
+6 fun
+6 (
+6 )
+6 {
+7 IDENTIFIER this
+7 =
+7 {
+8 IDENTIFIER left
+8 :
+8 None
+8 ;
+9 IDENTIFIER right
+9 :
+9 None
+9 ;
+10 IDENTIFIER setLeft
+10 :
+10 fun
+10 (
+10 IDENTIFIER leftNode
+10 )
+10 {
+11 IDENTIFIER this
+11 .
+11 IDENTIFIER left
+11 =
+11 IDENTIFIER leftNode
+11 ;
+12 }
+12 ;
+13 IDENTIFIER setRight
+13 :
+13 fun
+13 (
+13 IDENTIFIER rightNode
+13 )
+13 {
+14 IDENTIFIER this
+14 .
+14 IDENTIFIER right
+14 =
+14 IDENTIFIER rightNode
+14 ;
+15 }
+15 ;
+16 IDENTIFIER getLeft
+16 :
+16 fun
+16 (
+16 )
+16 {
+17 return
+17 IDENTIFIER this
+17 .
+17 IDENTIFIER left
+17 ;
+18 }
+18 ;
+19 IDENTIFIER getRight
+19 :
+19 fun
+19 (
+19 )
+19 {
+20 return
+20 IDENTIFIER this
+20 .
+20 IDENTIFIER right
+20 ;
+21 }
+21 ;
+22 }
+22 ;
+23 return
+23 IDENTIFIER this
+23 ;
+24 }
+24 ;
+27 IDENTIFIER timeconstruction
+27 =
+27 fun
+27 (
+27 IDENTIFIER depth
+27 ,
+27 IDENTIFIER iNumIters
+27 )
+27 {
+28 IDENTIFIER print
+28 (
+28 STRINGLITERAL "Creating "
+28 +
+28 IDENTIFIER iNumIters
+28 +
+28 STRINGLITERAL " trees of depth "
+28 +
+28 IDENTIFIER depth
+28 )
+28 ;
+30 IDENTIFIER i
+30 =
+30 INTLITERAL 0
+30 ;
+31 while
+31 (
+31 IDENTIFIER i
+31 <
+31 IDENTIFIER iNumIters
+31 )
+31 {
+32 IDENTIFIER temproot
+32 =
+32 IDENTIFIER Node
+32 (
+32 )
+32 ;
+33 IDENTIFIER populate
+33 (
+33 IDENTIFIER depth
+33 ,
+33 IDENTIFIER temproot
+33 )
+33 ;
+34 IDENTIFIER temproot
+34 =
+34 None
+34 ;
+35 IDENTIFIER i
+35 =
+35 IDENTIFIER i
+35 +
+35 INTLITERAL 1
+35 ;
+36 }
+37 IDENTIFIER print
+37 (
+37 STRINGLITERAL "\tTop down construction"
+37 )
+37 ;
+39 IDENTIFIER i
+39 =
+39 INTLITERAL 0
+39 ;
+40 while
+40 (
+40 IDENTIFIER i
+40 <
+40 IDENTIFIER iNumIters
+40 )
+40 {
+41 IDENTIFIER temproot
+41 =
+41 IDENTIFIER maketree
+41 (
+41 IDENTIFIER depth
+41 )
+41 ;
+42 IDENTIFIER temproot
+42 =
+42 None
+42 ;
+43 IDENTIFIER i
+43 =
+43 IDENTIFIER i
+43 +
+43 INTLITERAL 1
+43 ;
+44 }
+45 IDENTIFIER print
+45 (
+45 STRINGLITERAL "\tBottom up construction"
+45 )
+45 ;
+46 }
+46 ;
+49 IDENTIFIER populate
+49 =
+49 fun
+49 (
+49 IDENTIFIER depth
+49 ,
+49 IDENTIFIER node
+49 )
+49 {
+50 if
+50 (
+50 IDENTIFIER depth
+50 <=
+50 INTLITERAL 0
+50 )
+50 {
+51 return
+51 None
+51 ;
+52 }
+52 else
+52 {
+53 IDENTIFIER depth
+53 =
+53 IDENTIFIER depth
+53 -
+53 INTLITERAL 1
+53 ;
+54 IDENTIFIER newLeft
+54 =
+54 IDENTIFIER Node
+54 (
+54 )
+54 ;
+55 IDENTIFIER newRight
+55 =
+55 IDENTIFIER Node
+55 (
+55 )
+55 ;
+57 IDENTIFIER node
+57 .
+57 IDENTIFIER setLeft
+57 (
+57 IDENTIFIER newLeft
+57 )
+57 ;
+58 IDENTIFIER node
+58 .
+58 IDENTIFIER setRight
+58 (
+58 IDENTIFIER newRight
+58 )
+58 ;
+60 IDENTIFIER populate
+60 (
+60 IDENTIFIER depth
+60 ,
+60 IDENTIFIER node
+60 .
+60 IDENTIFIER getLeft
+60 (
+60 )
+60 )
+60 ;
+61 IDENTIFIER populate
+61 (
+61 IDENTIFIER depth
+61 ,
+61 IDENTIFIER node
+61 .
+61 IDENTIFIER getRight
+61 (
+61 )
+61 )
+61 ;
+62 }
+63 }
+63 ;
+65 IDENTIFIER maketree
+65 =
+65 fun
+65 (
+65 IDENTIFIER depth
+65 )
+65 {
+66 if
+66 (
+66 IDENTIFIER depth
+66 <=
+66 INTLITERAL 0
+66 )
+66 {
+67 IDENTIFIER newNode
+67 =
+67 IDENTIFIER Node
+67 (
+67 )
+67 ;
+68 return
+68 IDENTIFIER newNode
+68 ;
+69 }
+69 else
+69 {
+70 IDENTIFIER newNode
+70 =
+70 IDENTIFIER Node
+70 (
+70 )
+70 ;
+71 IDENTIFIER newNode
+71 .
+71 IDENTIFIER setLeft
+71 (
+71 IDENTIFIER maketree
+71 (
+71 IDENTIFIER depth
+71 -
+71 INTLITERAL 1
+71 )
+71 )
+71 ;
+72 IDENTIFIER newNode
+72 .
+72 IDENTIFIER setRight
+72 (
+72 IDENTIFIER maketree
+72 (
+72 IDENTIFIER depth
+72 -
+72 INTLITERAL 1
+72 )
+72 )
+72 ;
+73 return
+73 IDENTIFIER newNode
+73 ;
+74 }
+75 }
+75 ;
+78 IDENTIFIER print
+78 (
+78 STRINGLITERAL "Garbage collector bench4.mit"
+78 )
+78 ;
+79 IDENTIFIER print
+79 (
+79 STRINGLITERAL "Starting timeconstruction tests..."
+79 )
+79 ;
+80 IDENTIFIER d
+80 =
+80 IDENTIFIER kMinTreeDepth
+80 ;
+81 IDENTIFIER numIters
+81 =
+81 IDENTIFIER kNumIters
+81 ;
+82 while
+82 (
+82 IDENTIFIER d
+82 <
+82 IDENTIFIER kMaxTreeDepth
+82 )
+82 {
+83 IDENTIFIER timeconstruction
+83 (
+83 IDENTIFIER d
+83 ,
+83 IDENTIFIER numIters
+83 )
+83 ;
+84 IDENTIFIER d
+84 =
+84 IDENTIFIER d
+84 +
+84 INTLITERAL 2
+84 ;
+85 IDENTIFIER numIters
+85 =
+85 IDENTIFIER numIters
+85 /
+85 INTLITERAL 4
+85 ;
+86 }

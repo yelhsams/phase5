@@ -1,0 +1,50 @@
+1 IDENTIFIER y
+1 =
+1 fun
+1 (
+1 IDENTIFIER x
+1 )
+1 {
+2 return
+2 fun
+2 (
+2 IDENTIFIER w
+2 )
+2 {
+3 return
+3 IDENTIFIER x
+3 +
+3 IDENTIFIER w
+3 ;
+4 }
+4 ;
+5 }
+5 ;
+7 IDENTIFIER cool1
+7 =
+7 IDENTIFIER y
+7 (
+7 INTLITERAL 10
+7 )
+7 ;
+8 IDENTIFIER cool2
+8 =
+8 IDENTIFIER y
+8 (
+8 INTLITERAL 15
+8 )
+8 ;
+10 IDENTIFIER cool3
+10 =
+10 IDENTIFIER cool1
+10 (
+10 INTLITERAL 20
+10 )
+10 ;
+11 IDENTIFIER cool4
+11 =
+11 IDENTIFIER cool2
+11 (
+11 STRINGLITERAL "hello"
+11 )
+11 ;

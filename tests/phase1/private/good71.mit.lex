@@ -1,0 +1,117 @@
+1 IDENTIFIER f
+1 =
+1 fun
+1 (
+1 IDENTIFIER rec
+1 )
+1 {
+2 IDENTIFIER rec
+2 =
+2 {
+2 }
+2 ;
+3 IDENTIFIER rec
+3 .
+3 IDENTIFIER x
+3 =
+3 STRINGLITERAL "jdaskjkldsfjklasjdklfjaskldfjkajf;ljdskljf;lajsdl;fjal;ksdjfkajsdlk;fjlaksdjfklajsdfljaslk;djadkjf"
+3 ;
+4 IDENTIFIER rec
+4 .
+4 IDENTIFIER y
+4 =
+4 IDENTIFIER rec
+4 .
+4 IDENTIFIER x
+4 ;
+5 IDENTIFIER rec
+5 .
+5 IDENTIFIER nums
+5 =
+5 {
+5 }
+5 ;
+6 IDENTIFIER i
+6 =
+6 INTLITERAL 100
+6 ;
+7 while
+7 (
+7 IDENTIFIER i
+7 >
+7 INTLITERAL 0
+7 )
+7 {
+8 IDENTIFIER rec
+8 .
+8 IDENTIFIER nums
+8 [
+8 STRINGLITERAL "_jsdvksdfhajksfhjkashfjkashlfjafddshjklfasdljkfsdjkfhalk"
+8 +
+8 IDENTIFIER i
+8 ]
+8 =
+8 {
+9 IDENTIFIER x
+9 :
+9 IDENTIFIER rec
+9 .
+9 IDENTIFIER x
+9 ;
+10 IDENTIFIER y
+10 :
+10 IDENTIFIER rec
+10 .
+10 IDENTIFIER y
+10 ;
+11 }
+11 ;
+12 IDENTIFIER i
+12 =
+12 IDENTIFIER i
+12 -
+12 INTLITERAL 1
+12 ;
+13 IDENTIFIER print
+13 (
+13 STRINGLITERAL "inner: "
+13 +
+13 IDENTIFIER i
+13 )
+13 ;
+14 }
+15 return
+15 IDENTIFIER rec
+15 ;
+16 }
+16 ;
+18 IDENTIFIER i
+18 =
+18 INTLITERAL 5000
+18 ;
+19 IDENTIFIER rec
+19 =
+19 {
+19 }
+19 ;
+20 while
+20 (
+20 IDENTIFIER i
+20 >
+20 INTLITERAL 0
+20 )
+20 {
+21 IDENTIFIER rec
+21 =
+21 IDENTIFIER f
+21 (
+21 IDENTIFIER rec
+21 )
+21 ;
+22 IDENTIFIER i
+22 =
+22 IDENTIFIER i
+22 -
+22 INTLITERAL 1
+22 ;
+23 }

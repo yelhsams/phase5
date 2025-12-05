@@ -1,0 +1,42 @@
+1 IDENTIFIER f
+1 =
+1 fun
+1 (
+1 IDENTIFIER x
+1 )
+1 {
+2 IDENTIFIER f2
+2 =
+2 fun
+2 (
+2 IDENTIFIER y
+2 )
+2 {
+3 IDENTIFIER print
+3 (
+3 IDENTIFIER y
+3 )
+3 ;
+4 }
+4 ;
+5 IDENTIFIER f2
+5 (
+5 STRINGLITERAL "STRING2"
+5 )
+5 ;
+6 IDENTIFIER print
+6 =
+6 fun
+6 (
+6 IDENTIFIER z
+6 )
+6 {
+6 }
+6 ;
+7 }
+7 ;
+8 IDENTIFIER f
+8 (
+8 STRINGLITERAL "STRING2"
+8 )
+8 ;
