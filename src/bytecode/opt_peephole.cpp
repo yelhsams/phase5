@@ -334,6 +334,115 @@ static bool peephole_one_pass(Function *fn) {
 
   size_t i = 0;
   while (i < code.size()) {
+    // Pattern: Goto +1 -> remove (noop jump)
+    if (code[i].operation == Operation::Goto && code[i].operand0.has_value() &&
+        code[i].operand0.value() == 1 && !is_target[i]) {
+      old_to_new[i] = new_code.size(); // Map to next instruction
+      ++i;
+      changed = true;
+      continue;
+    }
+
+    // Pattern: LoadConst bool; If -> Goto or remove
+    if (i + 1 < code.size() && code[i + 1].operation == Operation::If &&
+        !is_target[i] && !is_target[i + 1]) {
+      auto cv = get_const(code[i], fn->constants_);
+      if (cv && cv->kind == ConstVal::BOOL) {
+        if (cv->b) {
+          // Condition is true - If becomes unconditional Goto
+          old_to_new[i] = new_code.size();
+          old_to_new[i + 1] = new_code.size();
+          new_code.push_back(
+              Instruction(Operation::Goto, code[i + 1].operand0.value()));
+          i += 2;
+          changed = true;
+          continue;
+        } else {
+          // Condition is false - remove both LoadConst and If (fall through)
+          old_to_new[i] = new_code.size();
+          old_to_new[i + 1] = new_code.size();
+          i += 2;
+          changed = true;
+          continue;
+        }
+      }
+    }
+
+    // Pattern: Not; Not -> remove both (double negation)
+    if (i + 1 < code.size() && code[i].operation == Operation::Not &&
+        code[i + 1].operation == Operation::Not && !is_target[i] &&
+        !is_target[i + 1]) {
+      old_to_new[i] = new_code.size();
+      old_to_new[i + 1] = new_code.size();
+      i += 2;
+      changed = true;
+      continue;
+    }
+
+    // Pattern: Neg; Neg -> remove both (double negation)
+    if (i + 1 < code.size() && code[i].operation == Operation::Neg &&
+        code[i + 1].operation == Operation::Neg && !is_target[i] &&
+        !is_target[i + 1]) {
+      old_to_new[i] = new_code.size();
+      old_to_new[i + 1] = new_code.size();
+      i += 2;
+      changed = true;
+      continue;
+    }
+
+    // Pattern: Dup; Pop -> remove both
+    if (i + 1 < code.size() && code[i].operation == Operation::Dup &&
+        code[i + 1].operation == Operation::Pop && !is_target[i] &&
+        !is_target[i + 1]) {
+      old_to_new[i] = new_code.size();
+      old_to_new[i + 1] = new_code.size();
+      i += 2;
+      changed = true;
+      continue;
+    }
+
+    // Pattern: LoadLocal X; LoadLocal X -> LoadLocal X; Dup
+    if (i + 1 < code.size() && code[i].operation == Operation::LoadLocal &&
+        code[i + 1].operation == Operation::LoadLocal &&
+        code[i].operand0.value() == code[i + 1].operand0.value() &&
+        !is_target[i] && !is_target[i + 1]) {
+      old_to_new[i] = new_code.size();
+      new_code.push_back(code[i]);
+      old_to_new[i + 1] = new_code.size();
+      new_code.push_back(Instruction(Operation::Dup, std::nullopt));
+      i += 2;
+      changed = true;
+      continue;
+    }
+
+    // Pattern: LoadGlobal X; LoadGlobal X -> LoadGlobal X; Dup
+    if (i + 1 < code.size() && code[i].operation == Operation::LoadGlobal &&
+        code[i + 1].operation == Operation::LoadGlobal &&
+        code[i].operand0.value() == code[i + 1].operand0.value() &&
+        !is_target[i] && !is_target[i + 1]) {
+      old_to_new[i] = new_code.size();
+      new_code.push_back(code[i]);
+      old_to_new[i + 1] = new_code.size();
+      new_code.push_back(Instruction(Operation::Dup, std::nullopt));
+      i += 2;
+      changed = true;
+      continue;
+    }
+
+    // Pattern: LoadConst X; LoadConst X -> LoadConst X; Dup
+    if (i + 1 < code.size() && code[i].operation == Operation::LoadConst &&
+        code[i + 1].operation == Operation::LoadConst &&
+        code[i].operand0.value() == code[i + 1].operand0.value() &&
+        !is_target[i] && !is_target[i + 1]) {
+      old_to_new[i] = new_code.size();
+      new_code.push_back(code[i]);
+      old_to_new[i + 1] = new_code.size();
+      new_code.push_back(Instruction(Operation::Dup, std::nullopt));
+      i += 2;
+      changed = true;
+      continue;
+    }
+
     // Pattern: LoadConst X; LoadConst Y; BinaryOp -> LoadConst Z
     // Only if no instruction in the sequence is a jump target
     if (i + 2 < code.size() && is_binary_op(code[i + 2].operation) &&
@@ -483,6 +592,54 @@ static bool peephole_one_pass(Function *fn) {
       new_code.push_back(Instruction(Operation::Dup, std::nullopt));
       old_to_new[i + 1] = new_code.size();
       new_code.push_back(code[i]); // StoreLocal X
+      i += 2;
+      changed = true;
+      continue;
+    }
+
+    // Copy propagation: StoreGlobal X; LoadGlobal X -> Dup; StoreGlobal X
+    if (i + 1 < code.size() &&
+        code[i].operation == Operation::StoreGlobal &&
+        code[i + 1].operation == Operation::LoadGlobal &&
+        code[i].operand0.value() == code[i + 1].operand0.value() &&
+        !is_target[i] && !is_target[i + 1]) {
+      old_to_new[i] = new_code.size();
+      new_code.push_back(Instruction(Operation::Dup, std::nullopt));
+      old_to_new[i + 1] = new_code.size();
+      new_code.push_back(code[i]); // StoreGlobal X
+      i += 2;
+      changed = true;
+      continue;
+    }
+
+    // Pattern: LoadConst X; Pop -> remove both (load then discard)
+    if (i + 1 < code.size() && code[i].operation == Operation::LoadConst &&
+        code[i + 1].operation == Operation::Pop && !is_target[i] &&
+        !is_target[i + 1]) {
+      old_to_new[i] = new_code.size();
+      old_to_new[i + 1] = new_code.size();
+      i += 2;
+      changed = true;
+      continue;
+    }
+
+    // Pattern: LoadLocal X; Pop -> remove both (load then discard)
+    if (i + 1 < code.size() && code[i].operation == Operation::LoadLocal &&
+        code[i + 1].operation == Operation::Pop && !is_target[i] &&
+        !is_target[i + 1]) {
+      old_to_new[i] = new_code.size();
+      old_to_new[i + 1] = new_code.size();
+      i += 2;
+      changed = true;
+      continue;
+    }
+
+    // Pattern: LoadGlobal X; Pop -> remove both (load then discard)
+    if (i + 1 < code.size() && code[i].operation == Operation::LoadGlobal &&
+        code[i + 1].operation == Operation::Pop && !is_target[i] &&
+        !is_target[i + 1]) {
+      old_to_new[i] = new_code.size();
+      old_to_new[i + 1] = new_code.size();
       i += 2;
       changed = true;
       continue;
