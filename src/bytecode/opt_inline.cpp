@@ -91,25 +91,43 @@ static void inline_one(Function *f) {
         continue;
       }
 
+      // Verify parameter count matches
+      if (callee->parameter_count_ != (uint32_t)arg_count) {
+        new_code.push_back(inst);
+        continue;
+      }
+
       // --- INLINING STARTS HERE ---
 
-      // 1. Copy everything except LOAD_FUNC + args
-      size_t start_of_call_seq = i - (arg_count + 1);
-
-      for (size_t k = new_code.size(); k < start_of_call_seq; k++)
-        new_code.push_back(code[k]);
-
-      // 2. Extend caller’s locals
+      // 1. Extend caller's locals to accommodate callee's locals
       size_t local_offset = f->local_vars_.size();
       f->local_vars_.insert(f->local_vars_.end(), callee->local_vars_.begin(),
                             callee->local_vars_.end());
 
-      // 3. Insert cloned & remapped callee body
+      // 2. The arg_count arguments are already on the stack (pushed before LOAD_FUNC)
+      //    We need to store them into the callee's parameter locals
+      //
+      //    Stack layout before CALL:
+      //      ... [arg0] [arg1] ... [arg_{n-1}] [function] <-- top
+      //
+      //    After inlining, we need:
+      //      StoreLocal(param0, arg0)
+      //      StoreLocal(param1, arg1)
+      //      ...
+      //      <callee body>
+      //
+      // Generate StoreLocal for each parameter (in reverse order since stack is LIFO)
+      for (int param_idx = arg_count - 1; param_idx >= 0; param_idx--) {
+        Instruction store_inst(Operation::StoreLocal, local_offset + param_idx);
+        new_code.push_back(store_inst);
+      }
+
+      // 3. Insert cloned & remapped callee body (excluding Return)
       auto cloned = clone_and_remap(callee, local_offset);
       new_code.insert(new_code.end(), cloned.begin(), cloned.end());
 
-      // 4. Skip over LOAD_FUNC, args, and CALL
-      // so we do NOT re-copy them
+      // 4. Skip over LOAD_FUNC and CALL (arguments already processed and on stack)
+      // We continue loop which skips to i+1, effectively skipping the CALL
       continue;
     }
 
