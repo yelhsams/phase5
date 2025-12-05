@@ -293,7 +293,6 @@ namespace mitscript {
                         global_frame->frame["print"] = heap->allocate<NativeFunctionValue>("print", 1, [](const std::vector<Value*>& args, Interpreter& interp) -> Value* {
                             (void)interp;
                             std::string out = str(args[0]);
-                            while (!out.empty() && out.back() == ' ') out.pop_back();
                             std::cout << out << std::endl;
                             return NoneValue::instance();
                         });

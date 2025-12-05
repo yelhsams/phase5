@@ -26,8 +26,7 @@ static bool has_opt(const Command &cmd, const std::string &name) {
   auto present = [&](const std::string &needle) {
     return std::find(cmd.opt.begin(), cmd.opt.end(), needle) != cmd.opt.end();
   };
-  // "all" enables every optimization.
-  return present(name) || present("all");
+  return present(name);
 }
 
 static std::string token_kind_name(const mitscript::Token &t) {
