@@ -2697,8 +2697,8 @@ private:
   }
 
 public:
-  explicit VM(size_t max_mem_mb = 10000)
-      : max_heap_bytes(max_mem_mb * 1024 * 1024) {
+  explicit VM(size_t max_mem_mb = 10000, bool enable_jit = false)
+      : jit_enabled(enable_jit), max_heap_bytes(max_mem_mb * 1024 * 1024) {
     // Bypass allocate wrapper to avoid premature GC before roots are known.
     none_singleton = heap.allocate<None>();
     bool_true_singleton = heap.allocate<Boolean>(true);
