@@ -1,21 +1,22 @@
 #include "cli.hpp"
 
-#include "bytecode/opt_inline.hpp"
 #include "bytecode/parser.hpp"
 #include "bytecode/prettyprinter.hpp"
+#include "mitscript-interpreter/interpreter.hpp"
+#include "bytecode/prettyprinter.hpp"
 #include "mitscript-compiler/bytecode-converter.hpp"
+#include "mitscript-compiler/converter.hpp"
 #include "mitscript-compiler/cfg-prettyprinter.hpp"
 #include "mitscript-compiler/constant-propagation.hpp"
-#include "mitscript-compiler/converter.hpp"
-#include "mitscript-compiler/dce.hpp"
 #include "mitscript-compiler/inliner.hpp"
 #include "mitscript-compiler/shape_analysis.hpp"
-#include "mitscript-interpreter/interpreter.hpp"
 #include "mitscript-interpreter/lexer.hpp"
 #include "mitscript-interpreter/parser.hpp"
 #include "vm/interpreter.hpp"
-#include <algorithm>
+#include "bytecode/opt_inline.hpp"
+#include "mitscript-compiler/dce.hpp"
 #include <iostream>
+#include <algorithm>
 
 static std::string read_istream(std::istream &is) {
   return std::string(std::istreambuf_iterator<char>(is),
@@ -31,12 +32,10 @@ static bool has_opt(const Command &cmd, const std::string &name) {
 }
 
 static void run_shape_analysis_recursive(mitscript::CFG::FunctionCFG &fn) {
-  // Run intraprocedural shape analysis per function; results are available for
-  // later passes.
+  // Run intraprocedural shape analysis per function; results are available for later passes.
   (void)mitscript::analysis::run_shape_analysis(fn);
   for (auto &child : fn.children) {
-    if (child)
-      run_shape_analysis_recursive(*child);
+    if (child) run_shape_analysis_recursive(*child);
   }
 }
 
@@ -158,20 +157,17 @@ int main(int argc, char **argv) {
         mitscript::analysis::run_dce_on_function(cfg);
       }
 
-      if (has_opt(command, "inline") || has_opt(command, "inlining") ||
-          has_opt(command, "all")) {
+      if (has_opt(command, "inline") || has_opt(command, "inlining") || has_opt(command, "all")) {
         mitscript::analysis::InlineConfig icfg;
         mitscript::analysis::run_inlining_pass(cfg, icfg);
       }
 
-      if (has_opt(command, "shape") || has_opt(command, "shapeanalysis") ||
-          has_opt(command, "all")) {
+      if (has_opt(command, "shape") || has_opt(command, "shapeanalysis") || has_opt(command, "all")) {
         run_shape_analysis_recursive(cfg);
       }
 
       auto has_printcfg = [&]() {
-        return std::find(command.opt.begin(), command.opt.end(), "printcfg") !=
-               command.opt.end();
+        return std::find(command.opt.begin(), command.opt.end(), "printcfg") != command.opt.end();
       };
       if (has_printcfg()) {
         mitscript::CFG::prettyprint(cfg, *command.output_stream);
@@ -222,21 +218,18 @@ int main(int argc, char **argv) {
         mitscript::analysis::run_dce_on_function(cfg);
       }
 
-      if (has_opt(command, "inline") || has_opt(command, "inlining") ||
-          has_opt(command, "all")) {
+      if (has_opt(command, "inline") || has_opt(command, "inlining") || has_opt(command, "all")) {
         mitscript::analysis::InlineConfig icfg;
         mitscript::analysis::run_inlining_pass(cfg, icfg);
       }
 
-      if (has_opt(command, "shape") || has_opt(command, "shapeanalysis") ||
-          has_opt(command, "all")) {
+      if (has_opt(command, "shape") || has_opt(command, "shapeanalysis") || has_opt(command, "all")) {
         run_shape_analysis_recursive(cfg);
       }
 
       // Optional: print CFG before lowering to bytecode
       auto has_printcfg = [&]() {
-        return std::find(command.opt.begin(), command.opt.end(), "printcfg") !=
-               command.opt.end();
+        return std::find(command.opt.begin(), command.opt.end(), "printcfg") != command.opt.end();
       };
       if (has_printcfg()) {
         mitscript::CFG::prettyprint(cfg, *command.output_stream);
@@ -245,8 +238,7 @@ int main(int argc, char **argv) {
       BytecodeConverter bc;
       bytecode::Function *bytecode = bc.convert(cfg, /*is_toplevel=*/true);
       // bytecode::opt_inline::inline_functions(bytecode);
-      vm::VM vm(command.mem,
-                has_opt(command, "jit") || has_opt(command, "all"));
+      vm::VM vm(command.mem);
       vm.run(bytecode);
     } catch (const std::exception &e) {
       had_error = true;
@@ -289,13 +281,11 @@ int main(int argc, char **argv) {
 
       size_t max_mem_mb = command.mem;
 
-      // Optimization: inlining (disabled for now; current pass is not
-      // semantics-safe)
+      // Optimization: inlining (disabled for now; current pass is not semantics-safe)
       bytecode::opt_inline::inline_functions(bytecode_func);
 
       // Create VM and execute
-      vm::VM vm(command.mem,
-                has_opt(command, "jit") || has_opt(command, "all"));
+      vm::VM vm(max_mem_mb);
       vm.run(bytecode_func);
 
       // Cleanup
