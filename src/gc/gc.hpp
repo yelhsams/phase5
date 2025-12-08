@@ -62,6 +62,17 @@ class CollectedHeap {
   // Remembered set for old objects that may point to young ones
   std::vector<Collectable*> remembered_;
 
+  // Simple heuristics to decide between minor and full collection
+  std::size_t young_bytes_ = 0;
+  std::size_t promoted_bytes_since_full_ = 0;
+  std::size_t minor_since_full_ = 0;
+
+  // Tunable knobs for GC pacing
+  static constexpr std::size_t kYoungTargetBytes = 512 * 1024; // 512 KB
+  static constexpr std::size_t kPromotionFullThreshold = 2 * 1024 * 1024;
+  static constexpr std::size_t kFullThresholdBytes = 8 * 1024 * 1024;
+  static constexpr std::size_t kMaxMinorBeforeFull = 6;
+
   bool is_young(Collectable* obj) const { return obj && obj->generation_ == 0; }
   bool is_old(Collectable* obj) const { return obj && obj->generation_ > 0; }
 
@@ -119,6 +130,7 @@ class CollectedHeap {
     obj->in_remembered_ = false;
     allocated_bytes_ += obj->size_;
     objects_allocated_ += 1;
+    young_bytes_ += obj->size_;
     return obj;
   }
 
@@ -144,17 +156,44 @@ class CollectedHeap {
   */
   template <typename Iterator>
   void gc(Iterator begin, Iterator end) {
-    full_gc(begin, end);
+    bool force_full = allocated_bytes_ >= kFullThresholdBytes ||
+                      promoted_bytes_since_full_ >= kPromotionFullThreshold ||
+                      minor_since_full_ >= kMaxMinorBeforeFull;
+
+    if (!force_full && young_bytes_ > 0) {
+      minor_gc(begin, end);
+      minor_since_full_++;
+      // If nursery remains large after a minor collection, fall back to full
+      if (young_bytes_ > kYoungTargetBytes ||
+          promoted_bytes_since_full_ >= kPromotionFullThreshold) {
+        force_full = true;
+      }
+    } else {
+      force_full = true;
+    }
+
+    if (force_full) {
+      full_gc(begin, end);
+      minor_since_full_ = 0;
+      promoted_bytes_since_full_ = 0;
+    }
   }
 
   template <typename Iterator>
   void minor_gc(Iterator begin, Iterator end) {
+    std::vector<Collectable*> new_remembered;
+    new_remembered.reserve(remembered_.size());
+
     for (auto it = begin; it != end; ++it) {
       markSuccessors(*it);
     }
 
+    // Remembered old objects are treated as roots to preserve young
+    // successors without forcing a full-heap traversal.
     for (Collectable* obj : remembered_) {
-      markSuccessors(obj);
+      if (obj) {
+        markSuccessors(obj);
+      }
     }
 
     Collectable* cur = head_;
@@ -175,6 +214,7 @@ class CollectedHeap {
           }
           allocated_bytes_ -= cur->size_;
           objects_allocated_ -= 1;
+          young_bytes_ -= cur->size_;
           delete cur;
         }
         // unreachable old objects collected only in full GC
@@ -182,10 +222,16 @@ class CollectedHeap {
         cur->marked_ = false;
         if (is_young(cur)) {
           cur->generation_ = 1;
+          promoted_bytes_since_full_ += cur->size_;
+          young_bytes_ -= cur->size_;
+        } else if (cur->in_remembered_) {
+          new_remembered.push_back(cur);
         }
       }
       cur = next;
     }
+
+    remembered_.swap(new_remembered);
   }
 
   template <typename Iterator>
@@ -224,6 +270,9 @@ class CollectedHeap {
       cur = next;
     }
     remembered_.clear();
+    young_bytes_ = 0;
+    promoted_bytes_since_full_ = 0;
+    minor_since_full_ = 0;
   }
 
  private:
