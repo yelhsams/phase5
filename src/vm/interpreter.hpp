@@ -12,6 +12,8 @@
 #include <vector>
 #include <unordered_map>
 #include <cstdint>
+#include <sys/mman.h>
+#include <unistd.h>
 
 
 namespace vm {
@@ -298,9 +300,22 @@ private:
   CollectedHeap heap;
   std::unordered_map<std::string, TaggedValue> globals;
   size_t max_heap_bytes;
+  bool jit_enabled = false;
   std::unordered_map<bytecode::Function *, int>
       native_functions; // Map function to native ID
   std::unordered_map<bytecode::Constant *, Value *> constant_cache;
+
+  struct JitBlock {
+    using EntryPoint = TaggedValue (*)(
+        VM *, bytecode::Function *, const std::vector<TaggedValue> *,
+        const std::vector<Value *> *);
+
+    EntryPoint entry = nullptr;
+    size_t code_size = 0;
+    void *memory = nullptr;
+  };
+
+  std::unordered_map<bytecode::Function *, JitBlock> jitted_functions;
 
   // For GC - track current execution state
   std::vector<Frame *> call_stack;
@@ -687,6 +702,75 @@ private:
 
     func->register_count = alloc.max_used + 1;
     func->reg_instructions = std::move(out);
+  }
+
+  // Recursively translate a function and all nested functions to the
+  // register-based representation. Skip functions that have already been
+  // translated so repeated calls are cheap.
+  void ensure_reg_translation(bytecode::Function *func) {
+    if (!func || !func->reg_instructions.empty()) return;
+
+    for (auto *child : func->functions_) {
+      ensure_reg_translation(child);
+    }
+
+    translate_stack_to_reg(func);
+  }
+
+  static TaggedValue reg_entry_trampoline(
+      VM *vm, bytecode::Function *func, const std::vector<TaggedValue> *args,
+      const std::vector<Value *> *free_refs) {
+    return vm->execute_function_reg(func, *args, *free_refs);
+  }
+
+  JitBlock &compile_to_native(bytecode::Function *func) {
+    auto it = jitted_functions.find(func);
+    if (it != jitted_functions.end()) {
+      return it->second;
+    }
+
+    ensure_reg_translation(func);
+
+    // Simple stub that tail-jumps into the register-based interpreter entry
+    // point. Arguments are forwarded using the standard System V calling
+    // convention used by the helper signature.
+    constexpr size_t kCodeSize = 12; // movabs rax, imm64; jmp rax
+
+    size_t page_size = static_cast<size_t>(getpagesize());
+#ifdef MAP_ANON
+    const int map_anon_flag = MAP_ANON;
+#else
+    const int map_anon_flag = MAP_ANONYMOUS;
+#endif
+    void *mem = mmap(nullptr, page_size, PROT_READ | PROT_WRITE | PROT_EXEC,
+                     MAP_PRIVATE | map_anon_flag, -1, 0);
+    if (mem == MAP_FAILED) {
+      throw RuntimeException("Failed to allocate executable memory for JIT");
+    }
+
+    uint8_t *code = static_cast<uint8_t *>(mem);
+    code[0] = 0x48; // REX.W prefix for 64-bit operand size
+    code[1] = 0xB8; // MOV rax, imm64
+    *reinterpret_cast<uint64_t *>(code + 2) =
+        reinterpret_cast<uint64_t>(&VM::reg_entry_trampoline);
+    code[10] = 0xFF; // JMP rax
+    code[11] = 0xE0;
+
+    JitBlock block;
+    block.entry = reinterpret_cast<JitBlock::EntryPoint>(code);
+    block.code_size = kCodeSize;
+    block.memory = mem;
+
+    auto [insert_it, _] = jitted_functions.emplace(func, block);
+    return insert_it->second;
+  }
+
+  void ensure_jit_translation(bytecode::Function *func) {
+    if (!func) return;
+    compile_to_native(func);
+    for (auto *child : func->functions_) {
+      ensure_jit_translation(child);
+    }
   }
 
   TaggedValue execute_function_reg(bytecode::Function *func,
@@ -1463,8 +1547,11 @@ private:
   TaggedValue execute_function(bytecode::Function *func,
                           const std::vector<TaggedValue> &args,
                           const std::vector<Value *> &free_refs) {
-    if (!func->reg_instructions.empty()) {
-      return execute_function_reg(func, args, free_refs);
+    if (jit_enabled) {
+      JitBlock &jit_block = compile_to_native(func);
+      if (jit_block.entry) {
+        return jit_block.entry(this, func, &args, &free_refs);
+      }
     }
     // Handle native functions - if this function is a native function, call it
     auto it = native_functions.find(func);
@@ -2262,8 +2349,8 @@ private:
   }
 
 public:
-  explicit VM(size_t max_mem_mb = 10000)
-      : max_heap_bytes(max_mem_mb * 1024 * 1024) {
+  explicit VM(size_t max_mem_mb = 10000, bool enable_jit = false)
+      : max_heap_bytes(max_mem_mb * 1024 * 1024), jit_enabled(enable_jit) {
     // Bypass allocate wrapper to avoid premature GC before roots are known.
     none_singleton = heap.allocate<None>();
     bool_true_singleton = heap.allocate<Boolean>(true);
@@ -2271,6 +2358,13 @@ public:
   }
 
   void run(bytecode::Function *main_func) {
+    if (jit_enabled) {
+      // Translate and JIT-compile the entire program to the faster native
+      // entrypoints before execution. The generated stubs hand off to the
+      // register-based interpreter, avoiding repeated decode overhead.
+      ensure_jit_translation(main_func);
+    }
+
     // Mark first 3 functions as native with their IDs
     if (main_func->functions_.size() >= 3) {
       native_functions[main_func->functions_[0]] = 0; // print

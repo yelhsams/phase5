@@ -15,7 +15,7 @@ void print_help(char *argv0) {
     std::cout << "  -h,     --help              Print this help message and exit\n";
     std::cout << "  -o,     --output TEXT       Path to output file, use '-' for stdout\n";
     std::cout << "  -m,     --mem UINT          Memory limit in MB -- Enabled for VM/derby subcommands\n";
-    std::cout << "  -O,     --opt TEXT          Comma-separated list of operators\n";
+    std::cout << "  -O,     --opt TEXT          Comma-separated list of optimizations (e.g. 'jit')\n";
     std::cout << "\n";
     std::cout << "SUBCOMMANDS:\n";
     std::cout << "  scan\n";
