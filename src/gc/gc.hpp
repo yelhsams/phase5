@@ -206,12 +206,7 @@ class CollectedHeap {
 
           if (next) next->prev_ = cur->prev_;
 
-          for (const auto& k : allocation_cache->keys()) {
-            auto* cached = allocation_cache->get(k);
-            if (reinterpret_cast<void*>(cached) == reinterpret_cast<void*>(cur)) {
-              allocation_cache->remove(k);
-            }
-          }
+          while (allocation_cache->removeValue(reinterpret_cast<mitscript::Value*>(cur))) {}
           allocated_bytes_ -= cur->size_;
           objects_allocated_ -= 1;
           young_bytes_ -= cur->size_;
@@ -252,12 +247,7 @@ class CollectedHeap {
         if (next) next->prev_ = cur->prev_;
 
         // Purge any cache entries that point to this object (compare addresses)
-        for (const auto& k : allocation_cache->keys()) {
-          auto* cached = allocation_cache->get(k);
-          if (reinterpret_cast<void*>(cached) == reinterpret_cast<void*>(cur)) {
-            allocation_cache->remove(k);
-          }
-        }
+        while (allocation_cache->removeValue(reinterpret_cast<mitscript::Value*>(cur))) {}
         allocated_bytes_ -= cur->size_;
         objects_allocated_ -= 1;
         delete cur;
