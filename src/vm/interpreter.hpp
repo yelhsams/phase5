@@ -4,15 +4,17 @@
 #include "bytecode/types.hpp"
 #include "gc/gc.hpp"
 #include <algorithm>
+#include <cstdint>
 #include <exception>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <set>
 #include <string>
-#include <vector>
+#include <sys/mman.h>
+#include <unistd.h>
 #include <unordered_map>
-#include <cstdint>
-#include <limits>
+#include <vector>
 
 //
 namespace vm {
@@ -319,27 +321,27 @@ struct Frame {
   bytecode::Function *func;
   const std::vector<Value *> *free_refs;
 
-  Frame(size_t local_count,
-        bytecode::Function *f,
+  Frame(size_t local_count, bytecode::Function *f,
         const std::vector<Value *> *fr)
-    : locals(local_count, TaggedValue::none()),
-      pc(0),
-      func(f),
-      free_refs(fr) {
-        stack.reserve(256);
-      }
+      : locals(local_count, TaggedValue::none()), pc(0), func(f),
+        free_refs(fr) {
+    stack.reserve(256);
+  }
 };
 
 // Virtual Machine
 class VM {
 private:
+  bool jit_enabled = false;
   CollectedHeap heap;
   std::vector<TaggedValue> globals_by_id;
   std::vector<bool> globals_initialized;
   std::unordered_map<std::string, size_t> global_name_to_slot;
-  std::unordered_map<bytecode::Function *, std::vector<size_t>> global_slot_cache;
+  std::unordered_map<bytecode::Function *, std::vector<size_t>>
+      global_slot_cache;
   std::unordered_map<std::string, size_t> field_name_to_slot;
-  std::unordered_map<bytecode::Function *, std::vector<size_t>> field_slot_cache;
+  std::unordered_map<bytecode::Function *, std::vector<size_t>>
+      field_slot_cache;
   static constexpr size_t kInvalidSlot = std::numeric_limits<size_t>::max();
   size_t max_heap_bytes;
   std::unordered_map<bytecode::Function *, int>
@@ -356,6 +358,18 @@ private:
   Value *none_singleton = nullptr;
   Value *bool_true_singleton = nullptr;
   Value *bool_false_singleton = nullptr;
+
+  struct JitBlock {
+    using EntryPoint = TaggedValue (*)(VM *, bytecode::Function *,
+                                       const std::vector<TaggedValue> *,
+                                       const std::vector<Value *> *);
+
+    EntryPoint entry = nullptr;
+    size_t code_size = 0;
+    void *memory = nullptr;
+  };
+
+  std::unordered_map<bytecode::Function *, JitBlock> jitted_functions;
 
   // Wrapper for heap allocation that triggers GC periodically
   template <typename T, typename... Args> T *allocate(Args &&...args) {
@@ -504,8 +518,7 @@ private:
     rec->dense_mode = false;
   }
 
-  bool record_try_dense_store(Record *rec,
-                              const TaggedValue &idx_tv,
+  bool record_try_dense_store(Record *rec, const TaggedValue &idx_tv,
                               const TaggedValue &val_tv) {
     if (!rec || !rec->dense_mode)
       return false;
@@ -513,8 +526,8 @@ private:
     if (!tagged_to_int(idx_tv, idx) || idx < 0) {
       // Non-integer key degrades to generic map mode.
       if (!(idx_tv.kind == TaggedValue::Kind::Integer ||
-            (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-             idx_tv.ptr && idx_tv.ptr->tag == Value::Type::Integer))) {
+            (idx_tv.kind == TaggedValue::Kind::HeapPtr && idx_tv.ptr &&
+             idx_tv.ptr->tag == Value::Type::Integer))) {
         degrade_record_to_map(rec);
       }
       return false;
@@ -531,8 +544,7 @@ private:
     return true;
   }
 
-  bool record_try_dense_load(Record *rec,
-                             const TaggedValue &idx_tv,
+  bool record_try_dense_load(Record *rec, const TaggedValue &idx_tv,
                              TaggedValue &out) {
     if (!rec || !rec->dense_mode)
       return false;
@@ -540,8 +552,8 @@ private:
     if (!tagged_to_int(idx_tv, idx) || idx < 0) {
       // Only degrade on non-integer keys.
       if (!(idx_tv.kind == TaggedValue::Kind::Integer ||
-            (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-             idx_tv.ptr && idx_tv.ptr->tag == Value::Type::Integer))) {
+            (idx_tv.kind == TaggedValue::Kind::HeapPtr && idx_tv.ptr &&
+             idx_tv.ptr->tag == Value::Type::Integer))) {
         degrade_record_to_map(rec);
       }
       return false;
@@ -561,12 +573,10 @@ private:
     std::string key;
     if (idx_tv.kind == TaggedValue::Kind::Integer) {
       key = std::to_string(idx_tv.i);
-    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-               idx_tv.ptr &&
+    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr && idx_tv.ptr &&
                idx_tv.ptr->tag == Value::Type::Integer) {
       key = std::to_string(static_cast<Integer *>(idx_tv.ptr)->value);
-    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-               idx_tv.ptr &&
+    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr && idx_tv.ptr &&
                idx_tv.ptr->tag == Value::Type::String) {
       key = static_cast<String *>(idx_tv.ptr)->value;
       size_t slot = ensure_field_slot(key);
@@ -585,20 +595,17 @@ private:
     return TaggedValue::none();
   }
 
-  void record_map_store(Record *rec,
-                        const TaggedValue &idx_tv,
+  void record_map_store(Record *rec, const TaggedValue &idx_tv,
                         const TaggedValue &val_tv) {
     if (!rec)
       throw IllegalCastException("Expected record");
     std::string key;
     if (idx_tv.kind == TaggedValue::Kind::Integer) {
       key = std::to_string(idx_tv.i);
-    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-               idx_tv.ptr &&
+    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr && idx_tv.ptr &&
                idx_tv.ptr->tag == Value::Type::Integer) {
       key = std::to_string(static_cast<Integer *>(idx_tv.ptr)->value);
-    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-               idx_tv.ptr &&
+    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr && idx_tv.ptr &&
                idx_tv.ptr->tag == Value::Type::String) {
       key = static_cast<String *>(idx_tv.ptr)->value;
     } else {
@@ -610,8 +617,7 @@ private:
     heap.write_barrier(rec, boxed);
 
     // Keep named_fields in sync for string keys to preserve fast path lookups.
-    if (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-        idx_tv.ptr &&
+    if (idx_tv.kind == TaggedValue::Kind::HeapPtr && idx_tv.ptr &&
         idx_tv.ptr->tag == Value::Type::String) {
       size_t slot = ensure_field_slot(key);
       if (slot >= rec->named_fields.size()) {
@@ -684,7 +690,8 @@ private:
       uint16_t max_used;
       uint16_t fresh() {
         uint16_t r = next++;
-        if (r > max_used) max_used = r;
+        if (r > max_used)
+          max_used = r;
         return r;
       }
     };
@@ -701,14 +708,16 @@ private:
     std::vector<bytecode::RegisterInstruction> out;
 
     auto ensure_reg_count = [&](uint16_t idx) {
-      if (idx > alloc.max_used) alloc.max_used = idx;
+      if (idx > alloc.max_used)
+        alloc.max_used = idx;
     };
     auto require_stack = [&](size_t need) {
       if (vstack.size() < need) {
         throw RuntimeException("Translate: stack underflow");
       }
     };
-    ensure_reg_count(static_cast<uint16_t>(func->local_vars_.size() ? func->local_vars_.size() - 1 : 0));
+    ensure_reg_count(static_cast<uint16_t>(
+        func->local_vars_.size() ? func->local_vars_.size() - 1 : 0));
 
     for (size_t pc = 0; pc < func->instructions.size(); ++pc) {
       pc_to_out[pc] = out.size();
@@ -729,7 +738,8 @@ private:
       case Operation::LoadLocal: {
         uint16_t reg = static_cast<uint16_t>(in.operand0.value());
         if (reg >= func->local_vars_.size()) {
-          throw RuntimeException("Translate: local variable index out of range");
+          throw RuntimeException(
+              "Translate: local variable index out of range");
         }
         ensure_reg_count(reg);
         vstack.push_back(reg);
@@ -737,10 +747,12 @@ private:
       }
       case Operation::StoreLocal: {
         require_stack(1);
-        uint16_t val = vstack.back(); vstack.pop_back();
+        uint16_t val = vstack.back();
+        vstack.pop_back();
         uint16_t dst = static_cast<uint16_t>(in.operand0.value());
         if (dst >= func->local_vars_.size()) {
-          throw RuntimeException("Translate: local variable index out of range");
+          throw RuntimeException(
+              "Translate: local variable index out of range");
         }
         ensure_reg_count(dst);
         out.push_back({Operation::StoreLocal, dst, val, 0, 0});
@@ -756,8 +768,10 @@ private:
       case Operation::And:
       case Operation::Or: {
         require_stack(2);
-        uint16_t right = vstack.back(); vstack.pop_back();
-        uint16_t left = vstack.back(); vstack.pop_back();
+        uint16_t right = vstack.back();
+        vstack.pop_back();
+        uint16_t left = vstack.back();
+        vstack.pop_back();
         uint16_t dst = alloc.fresh();
         out.push_back({in.operation, dst, left, right, 0});
         vstack.push_back(dst);
@@ -766,7 +780,8 @@ private:
       case Operation::Neg:
       case Operation::Not: {
         require_stack(1);
-        uint16_t val = vstack.back(); vstack.pop_back();
+        uint16_t val = vstack.back();
+        vstack.pop_back();
         uint16_t dst = alloc.fresh();
         out.push_back({in.operation, dst, val, 0, 0});
         vstack.push_back(dst);
@@ -783,7 +798,8 @@ private:
         break;
       }
       case Operation::If: {
-        uint16_t cond = vstack.back(); vstack.pop_back();
+        uint16_t cond = vstack.back();
+        vstack.pop_back();
         int64_t target_pc = static_cast<int64_t>(pc) + in.operand0.value();
         if (target_pc < 0 ||
             target_pc > static_cast<int64_t>(func->instructions.size())) {
@@ -801,8 +817,10 @@ private:
       }
       case Operation::Swap: {
         require_stack(2);
-        uint16_t a = vstack.back(); vstack.pop_back();
-        uint16_t b = vstack.back(); vstack.pop_back();
+        uint16_t a = vstack.back();
+        vstack.pop_back();
+        uint16_t b = vstack.back();
+        vstack.pop_back();
         vstack.push_back(a);
         vstack.push_back(b);
         break;
@@ -814,7 +832,8 @@ private:
       }
       case Operation::Call: {
         int32_t arg_count = in.operand0.value();
-        if (arg_count < 0 || vstack.size() < static_cast<size_t>(arg_count + 1)) {
+        if (arg_count < 0 ||
+            vstack.size() < static_cast<size_t>(arg_count + 1)) {
           throw RuntimeException("Translate: stack underflow");
         }
         std::vector<uint16_t> args;
@@ -824,7 +843,8 @@ private:
           vstack.pop_back();
         }
         std::reverse(args.begin(), args.end());
-        uint16_t callee = vstack.back(); vstack.pop_back();
+        uint16_t callee = vstack.back();
+        vstack.pop_back();
         uint16_t arg_start = alloc.fresh();
         uint16_t first_arg = arg_start;
         // ensure contiguous
@@ -832,9 +852,7 @@ private:
           ensure_reg_count(static_cast<uint16_t>(arg_start + arg_count - 1));
           for (int i = 0; i < arg_count; ++i) {
             out.push_back({Operation::StoreLocal,
-                           static_cast<uint16_t>(arg_start + i),
-                           args[i],
-                           0,
+                           static_cast<uint16_t>(arg_start + i), args[i], 0,
                            0});
           }
         }
@@ -845,7 +863,8 @@ private:
       }
       case Operation::Return: {
         require_stack(1);
-        uint16_t ret = vstack.back(); vstack.pop_back();
+        uint16_t ret = vstack.back();
+        vstack.pop_back();
         out.push_back({Operation::Return, 0, ret, 0, 0});
         break;
       }
@@ -857,19 +876,22 @@ private:
       }
       case Operation::StoreGlobal: {
         require_stack(1);
-        uint16_t val = vstack.back(); vstack.pop_back();
+        uint16_t val = vstack.back();
+        vstack.pop_back();
         out.push_back({Operation::StoreGlobal, 0, val, 0, in.operand0.value()});
         break;
       }
       case Operation::PushReference: {
         uint16_t dst = alloc.fresh();
-        out.push_back({Operation::PushReference, dst, 0, 0, in.operand0.value()});
+        out.push_back(
+            {Operation::PushReference, dst, 0, 0, in.operand0.value()});
         vstack.push_back(dst);
         break;
       }
       case Operation::LoadReference: {
         require_stack(1);
-        uint16_t ref = vstack.back(); vstack.pop_back();
+        uint16_t ref = vstack.back();
+        vstack.pop_back();
         uint16_t dst = alloc.fresh();
         out.push_back({Operation::LoadReference, dst, ref, 0, 0});
         vstack.push_back(dst);
@@ -877,8 +899,10 @@ private:
       }
       case Operation::StoreReference: {
         require_stack(2);
-        uint16_t val = vstack.back(); vstack.pop_back();
-        uint16_t ref = vstack.back(); vstack.pop_back();
+        uint16_t val = vstack.back();
+        vstack.pop_back();
+        uint16_t ref = vstack.back();
+        vstack.pop_back();
         out.push_back({Operation::StoreReference, 0, val, ref, 0});
         break;
       }
@@ -890,7 +914,8 @@ private:
       }
       case Operation::FieldLoad: {
         require_stack(1);
-        uint16_t rec = vstack.back(); vstack.pop_back();
+        uint16_t rec = vstack.back();
+        vstack.pop_back();
         uint16_t dst = alloc.fresh();
         out.push_back({Operation::FieldLoad, dst, rec, 0, in.operand0.value()});
         vstack.push_back(dst);
@@ -898,15 +923,20 @@ private:
       }
       case Operation::FieldStore: {
         require_stack(2);
-        uint16_t val = vstack.back(); vstack.pop_back();
-        uint16_t rec = vstack.back(); vstack.pop_back();
-        out.push_back({Operation::FieldStore, 0, val, rec, in.operand0.value()});
+        uint16_t val = vstack.back();
+        vstack.pop_back();
+        uint16_t rec = vstack.back();
+        vstack.pop_back();
+        out.push_back(
+            {Operation::FieldStore, 0, val, rec, in.operand0.value()});
         break;
       }
       case Operation::IndexLoad: {
         require_stack(2);
-        uint16_t idx = vstack.back(); vstack.pop_back();
-        uint16_t rec = vstack.back(); vstack.pop_back();
+        uint16_t idx = vstack.back();
+        vstack.pop_back();
+        uint16_t rec = vstack.back();
+        vstack.pop_back();
         uint16_t dst = alloc.fresh();
         out.push_back({Operation::IndexLoad, dst, rec, idx, 0});
         vstack.push_back(dst);
@@ -914,15 +944,19 @@ private:
       }
       case Operation::IndexStore: {
         require_stack(3);
-        uint16_t val = vstack.back(); vstack.pop_back();
-        uint16_t idx = vstack.back(); vstack.pop_back();
-        uint16_t rec = vstack.back(); vstack.pop_back();
+        uint16_t val = vstack.back();
+        vstack.pop_back();
+        uint16_t idx = vstack.back();
+        vstack.pop_back();
+        uint16_t rec = vstack.back();
+        vstack.pop_back();
         out.push_back({Operation::IndexStore, rec, val, idx, 0});
         break;
       }
       case Operation::AllocClosure: {
         int32_t free_count = in.operand0.value();
-        if (free_count < 0 || vstack.size() < static_cast<size_t>(free_count + 1)) {
+        if (free_count < 0 ||
+            vstack.size() < static_cast<size_t>(free_count + 1)) {
           throw RuntimeException("Translate: stack underflow");
         }
         std::vector<uint16_t> refs;
@@ -932,21 +966,20 @@ private:
           vstack.pop_back();
         }
         std::reverse(refs.begin(), refs.end());
-        uint16_t func_reg = vstack.back(); vstack.pop_back();
+        uint16_t func_reg = vstack.back();
+        vstack.pop_back();
 
         uint16_t base = alloc.fresh();
         if (free_count > 0) {
           ensure_reg_count(static_cast<uint16_t>(base + free_count - 1));
           for (int i = 0; i < free_count; ++i) {
             out.push_back({Operation::StoreLocal,
-                           static_cast<uint16_t>(base + i),
-                           refs[i],
-                           0,
-                           0});
+                           static_cast<uint16_t>(base + i), refs[i], 0, 0});
           }
         }
         uint16_t dst = alloc.fresh();
-        out.push_back({Operation::AllocClosure, dst, base, func_reg, free_count});
+        out.push_back(
+            {Operation::AllocClosure, dst, base, func_reg, free_count});
         vstack.push_back(dst);
         break;
       }
@@ -970,12 +1003,85 @@ private:
   }
 
   void translate_function_tree(bytecode::Function *func) {
-    if (!func) return;
+    if (!func)
+      return;
     if (func->reg_instructions.empty()) {
       translate_stack_to_reg(func);
     }
     for (auto *child : func->functions_) {
       translate_function_tree(child);
+    }
+  }
+
+  // Recursively translate a function and all nested functions to the
+  // register-based representation. Skip functions that have already been
+  // translated so repeated calls are cheap.
+  void ensure_reg_translation(bytecode::Function *func) {
+    if (!func || !func->reg_instructions.empty())
+      return;
+
+    for (auto *child : func->functions_) {
+      ensure_reg_translation(child);
+    }
+
+    translate_stack_to_reg(func);
+  }
+
+  static TaggedValue
+  reg_entry_trampoline(VM *vm, bytecode::Function *func,
+                       const std::vector<TaggedValue> *args,
+                       const std::vector<Value *> *free_refs) {
+    return vm->execute_function_reg(func, *args, *free_refs);
+  }
+
+  JitBlock &compile_to_native(bytecode::Function *func) {
+    auto it = jitted_functions.find(func);
+    if (it != jitted_functions.end()) {
+      return it->second;
+    }
+
+    ensure_reg_translation(func);
+
+    // Simple stub that tail-jumps into the register-based interpreter entry
+    // point. Arguments are forwarded using the standard System V calling
+    // convention used by the helper signature.
+    constexpr size_t kCodeSize = 12; // movabs rax, imm64; jmp rax
+
+    size_t page_size = static_cast<size_t>(getpagesize());
+#ifdef MAP_ANON
+    const int map_anon_flag = MAP_ANON;
+#else
+    const int map_anon_flag = MAP_ANONYMOUS;
+#endif
+    void *mem = mmap(nullptr, page_size, PROT_READ | PROT_WRITE | PROT_EXEC,
+                     MAP_PRIVATE | map_anon_flag, -1, 0);
+    if (mem == MAP_FAILED) {
+      throw RuntimeException("Failed to allocate executable memory for JIT");
+    }
+
+    uint8_t *code = static_cast<uint8_t *>(mem);
+    code[0] = 0x48; // REX.W prefix for 64-bit operand size
+    code[1] = 0xB8; // MOV rax, imm64
+    *reinterpret_cast<uint64_t *>(code + 2) =
+        reinterpret_cast<uint64_t>(&VM::reg_entry_trampoline);
+    code[10] = 0xFF; // JMP rax
+    code[11] = 0xE0;
+
+    JitBlock block;
+    block.entry = reinterpret_cast<JitBlock::EntryPoint>(code);
+    block.code_size = kCodeSize;
+    block.memory = mem;
+
+    auto [insert_it, _] = jitted_functions.emplace(func, block);
+    return insert_it->second;
+  }
+
+  void ensure_jit_translation(bytecode::Function *func) {
+    if (!func)
+      return;
+    compile_to_native(func);
+    for (auto *child : func->functions_) {
+      ensure_jit_translation(child);
     }
   }
 
@@ -998,10 +1104,11 @@ private:
       frame.locals[i] = args[i];
     }
 
-    // References for local_reference_vars: assume register index matches local_vars_ order
+    // References for local_reference_vars: assume register index matches
+    // local_vars_ order
     for (const auto &var_name : func->local_reference_vars_) {
-      auto it_ref =
-          std::find(func->local_vars_.begin(), func->local_vars_.end(), var_name);
+      auto it_ref = std::find(func->local_vars_.begin(),
+                              func->local_vars_.end(), var_name);
       if (it_ref != func->local_vars_.end()) {
         size_t var_idx = std::distance(func->local_vars_.begin(), it_ref);
         TaggedValue initial_val = frame.locals[var_idx];
@@ -1029,39 +1136,39 @@ private:
     std::vector<Value *> temp_refs_local;
 
     static void *dispatch_table[] = {
-        &&op_LoadConstR,    // LoadConst
-        &&op_LoadFuncR,     // LoadFunc
-        &&op_LoadLocalR,    // LoadLocal (used as move)
-        &&op_StoreLocalR,   // StoreLocal (used as move)
-        &&op_LoadGlobalR,   // LoadGlobal
-        &&op_StoreGlobalR,  // StoreGlobal
-        &&op_PushReferenceR,// PushReference
-        &&op_LoadReferenceR,// LoadReference
-        &&op_StoreReferenceR,// StoreReference
-        &&op_AllocRecordR,  // AllocRecord
-        &&op_FieldLoadR,    // FieldLoad
-        &&op_FieldStoreR,   // FieldStore
-        &&op_IndexLoadR,    // IndexLoad
-        &&op_IndexStoreR,   // IndexStore
-        &&op_AllocClosureR, // AllocClosure
-        &&op_CallR,         // Call
-        &&op_ReturnR,       // Return
-        &&op_AddR,          // Add
-        &&op_SubR,          // Sub
-        &&op_MulR,          // Mul
-        &&op_DivR,          // Div
-        &&op_NegR,          // Neg
-        &&op_GtR,           // Gt
-        &&op_GeqR,          // Geq
-        &&op_EqR,           // Eq
-        &&op_AndR,          // And
-        &&op_OrR,           // Or
-        &&op_NotR,          // Not
-        &&op_GotoR,         // Goto
-        &&op_IfR,           // If
-        &&op_DupR,          // Dup (unused)
-        &&op_SwapR,         // Swap (unused)
-        &&op_PopR           // Pop (unused)
+        &&op_LoadConstR,      // LoadConst
+        &&op_LoadFuncR,       // LoadFunc
+        &&op_LoadLocalR,      // LoadLocal (used as move)
+        &&op_StoreLocalR,     // StoreLocal (used as move)
+        &&op_LoadGlobalR,     // LoadGlobal
+        &&op_StoreGlobalR,    // StoreGlobal
+        &&op_PushReferenceR,  // PushReference
+        &&op_LoadReferenceR,  // LoadReference
+        &&op_StoreReferenceR, // StoreReference
+        &&op_AllocRecordR,    // AllocRecord
+        &&op_FieldLoadR,      // FieldLoad
+        &&op_FieldStoreR,     // FieldStore
+        &&op_IndexLoadR,      // IndexLoad
+        &&op_IndexStoreR,     // IndexStore
+        &&op_AllocClosureR,   // AllocClosure
+        &&op_CallR,           // Call
+        &&op_ReturnR,         // Return
+        &&op_AddR,            // Add
+        &&op_SubR,            // Sub
+        &&op_MulR,            // Mul
+        &&op_DivR,            // Div
+        &&op_NegR,            // Neg
+        &&op_GtR,             // Gt
+        &&op_GeqR,            // Geq
+        &&op_EqR,             // Eq
+        &&op_AndR,            // And
+        &&op_OrR,             // Or
+        &&op_NotR,            // Not
+        &&op_GotoR,           // Goto
+        &&op_IfR,             // If
+        &&op_DupR,            // Dup (unused)
+        &&op_SwapR,           // Swap (unused)
+        &&op_PopR             // Pop (unused)
     };
 
 #define DISPATCH_REG() goto *dispatch_table[static_cast<int>(ip->op)]
@@ -1078,7 +1185,8 @@ private:
     }
     frame.locals[dst] = constant_to_tagged(func->constants_[cidx]);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1091,7 +1199,8 @@ private:
     auto f = func->functions_[findex];
     frame.locals[dst] = TaggedValue::from_heap(allocate<Function>(f));
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1102,7 +1211,8 @@ private:
     TaggedValue v = frame.locals[ip->src1];
     frame.locals[ip->dst] = v;
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1114,7 +1224,8 @@ private:
     uint16_t dst = ip->dst;
     if (frame.ref_locals.find(dst) != frame.ref_locals.end()) {
       if (dst >= func->local_vars_.size()) {
-        throw RuntimeException("StoreLocal: local variable name index out of range");
+        throw RuntimeException(
+            "StoreLocal: local variable name index out of range");
       }
       const std::string &var_name = func->local_vars_[dst];
       auto ref_it = frame.local_refs.find(var_name);
@@ -1126,7 +1237,8 @@ private:
     }
     frame.locals[dst] = val;
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1142,7 +1254,8 @@ private:
     }
     frame.locals[ip->dst] = globals_by_id[slot];
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1158,7 +1271,8 @@ private:
     }
     globals_initialized[slot] = true;
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1170,15 +1284,16 @@ private:
       ref = frame.local_refs[var_name];
     } else {
       int32_t free_idx = idx - func->local_reference_vars_.size();
-      if (free_idx < 0 ||
-          free_idx >= static_cast<int32_t>(free_refs.size())) {
-        throw RuntimeException("PushReference: free variable index out of range");
+      if (free_idx < 0 || free_idx >= static_cast<int32_t>(free_refs.size())) {
+        throw RuntimeException(
+            "PushReference: free variable index out of range");
       }
       ref = free_refs[free_idx];
     }
     frame.locals[ip->dst] = TaggedValue::from_heap(ref);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1190,7 +1305,8 @@ private:
     auto ref = static_cast<Reference *>(ref_tv.ptr);
     frame.locals[ip->dst] = tagged_from_value(ref->cell);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1204,14 +1320,16 @@ private:
     ref->cell = box_tagged(val_tv);
     heap.write_barrier(ref, ref->cell);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_AllocRecordR: {
     frame.locals[ip->dst] = TaggedValue::from_heap(allocate<Record>());
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1233,7 +1351,8 @@ private:
     frame.locals[ip->dst] =
         field_val ? tagged_from_value(field_val) : TaggedValue::none();
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1257,7 +1376,8 @@ private:
     rec->fields[func->names_[idx]] = boxed;
     heap.write_barrier(rec, boxed);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1274,7 +1394,8 @@ private:
     }
     frame.locals[ip->dst] = result;
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1290,7 +1411,8 @@ private:
       record_map_store(rec, idx_tv, val_tv);
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1316,7 +1438,8 @@ private:
     }
     frame.locals[ip->dst] = TaggedValue::from_heap(closure_val);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1346,7 +1469,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1366,7 +1490,8 @@ private:
       throw IllegalCastException("Invalid operand types for subtract");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1386,7 +1511,8 @@ private:
       throw IllegalCastException("Invalid operand types for multiply");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1401,13 +1527,15 @@ private:
           right.ptr->tag == Value::Type::Integer))) {
       auto li = get_int(left);
       auto ri = get_int(right);
-      if (ri == 0) throw IllegalArithmeticException("Division by zero");
+      if (ri == 0)
+        throw IllegalArithmeticException("Division by zero");
       frame.locals[ip->dst] = TaggedValue::from_int(li / ri);
     } else {
       throw IllegalCastException("Invalid operand types for divide");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1422,7 +1550,8 @@ private:
       throw IllegalCastException("Invalid operand types for negate");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1435,12 +1564,14 @@ private:
         (right.kind == TaggedValue::Kind::Integer ||
          (right.kind == TaggedValue::Kind::HeapPtr &&
           right.ptr->tag == Value::Type::Integer))) {
-      frame.locals[ip->dst] = TaggedValue::from_bool(get_int(left) > get_int(right));
+      frame.locals[ip->dst] =
+          TaggedValue::from_bool(get_int(left) > get_int(right));
     } else {
       throw IllegalCastException("Invalid operand types for greater than");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1453,12 +1584,14 @@ private:
         (right.kind == TaggedValue::Kind::Integer ||
          (right.kind == TaggedValue::Kind::HeapPtr &&
           right.ptr->tag == Value::Type::Integer))) {
-      frame.locals[ip->dst] = TaggedValue::from_bool(get_int(left) >= get_int(right));
+      frame.locals[ip->dst] =
+          TaggedValue::from_bool(get_int(left) >= get_int(right));
     } else {
       throw IllegalCastException("Invalid operand types for greater or equal");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1467,7 +1600,8 @@ private:
     TaggedValue right = frame.locals[ip->src2];
     frame.locals[ip->dst] = TaggedValue::from_bool(values_equal(left, right));
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1480,12 +1614,14 @@ private:
         (right.kind == TaggedValue::Kind::Boolean ||
          (right.kind == TaggedValue::Kind::HeapPtr &&
           right.ptr->tag == Value::Type::Boolean))) {
-      frame.locals[ip->dst] = TaggedValue::from_bool(get_bool(left) && get_bool(right));
+      frame.locals[ip->dst] =
+          TaggedValue::from_bool(get_bool(left) && get_bool(right));
     } else {
       throw IllegalCastException("Invalid operand types for and");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1498,12 +1634,14 @@ private:
         (right.kind == TaggedValue::Kind::Boolean ||
          (right.kind == TaggedValue::Kind::HeapPtr &&
           right.ptr->tag == Value::Type::Boolean))) {
-      frame.locals[ip->dst] = TaggedValue::from_bool(get_bool(left) || get_bool(right));
+      frame.locals[ip->dst] =
+          TaggedValue::from_bool(get_bool(left) || get_bool(right));
     } else {
       throw IllegalCastException("Invalid operand types for or");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1517,7 +1655,8 @@ private:
       throw IllegalCastException("Invalid operand types for not");
     }
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1540,7 +1679,8 @@ private:
     } else {
       ++ip;
     }
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1564,7 +1704,8 @@ private:
     TaggedValue result;
     if (callee->tag == Value::Type::Closure) {
       auto closure = static_cast<Closure *>(callee);
-      result = execute_function(closure->function, temp_args_local, closure->free_var_refs);
+      result = execute_function(closure->function, temp_args_local,
+                                closure->free_var_refs);
     } else if (callee->tag == Value::Type::Function) {
       auto func_ptr_local = static_cast<Function *>(callee);
       result = execute_function(func_ptr_local->func, temp_args_local, {});
@@ -1574,28 +1715,32 @@ private:
     frame.locals[dst] = result;
 
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_DupR: {
     frame.locals[ip->dst] = frame.locals[ip->src1];
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_SwapR: {
     std::swap(frame.locals[ip->dst], frame.locals[ip->src1]);
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
   op_PopR: {
     frame.locals[ip->dst] = TaggedValue::none();
     ++ip;
-    if (ip == end) goto function_epilogue_reg;
+    if (ip == end)
+      goto function_epilogue_reg;
     DISPATCH_REG();
   }
 
@@ -1670,12 +1815,8 @@ private:
     throw UninitializedVariableException("Unknown native function");
   }
 
-  void print_value(Value *v) {
-    std::cout << v->toString();
-  }
-  void print_value(const TaggedValue &tv) {
-    std::cout << tagged_to_string(tv);
-  }
+  void print_value(Value *v) { std::cout << v->toString(); }
+  void print_value(const TaggedValue &tv) { std::cout << tagged_to_string(tv); }
 
   void maybe_gc() {
     // Collect root set: globals + all stack frames' locals + all operand stacks
@@ -1697,9 +1838,12 @@ private:
     }
 
     // Add singletons as roots
-    if (none_singleton) roots.push_back(none_singleton);
-    if (bool_true_singleton) roots.push_back(bool_true_singleton);
-    if (bool_false_singleton) roots.push_back(bool_false_singleton);
+    if (none_singleton)
+      roots.push_back(none_singleton);
+    if (bool_true_singleton)
+      roots.push_back(bool_true_singleton);
+    if (bool_false_singleton)
+      roots.push_back(bool_false_singleton);
 
     // Add all locals from all frames in call stack
     for (Frame *frame : call_stack) {
@@ -1727,13 +1871,9 @@ private:
   }
 
   // helper function for optimization execute_function
-  bool stack_empty(const Frame &frame) const {
-    return frame.sp == 0;
-  }
+  bool stack_empty(const Frame &frame) const { return frame.sp == 0; }
 
-  size_t stack_size(const Frame &frame) const {
-    return frame.sp;
-  }
+  size_t stack_size(const Frame &frame) const { return frame.sp; }
 
   TaggedValue stack_peek(Frame &frame) {
     if (frame.sp == 0)
@@ -1742,12 +1882,16 @@ private:
   }
 
   TaggedValue execute_function(bytecode::Function *func,
-                          const std::vector<TaggedValue> &args,
-                          const std::vector<Value *> &free_refs) {
-    if (!func->reg_instructions.empty()) {
-      return execute_function_reg(func, args, free_refs);
+                               const std::vector<TaggedValue> &args,
+                               const std::vector<Value *> &free_refs) {
+    if (jit_enabled) {
+      JitBlock &jit_block = compile_to_native(func);
+      if (jit_block.entry) {
+        return jit_block.entry(this, func, &args, &free_refs);
+      }
     }
-    // Handle native functions - if this function is a native function, call it
+    // Handle native functions - if this function is a native function, call
+    // it
     auto it = native_functions.find(func);
     if (it != native_functions.end()) {
       return tagged_from_value(call_native(it->second, args));
@@ -1767,8 +1911,8 @@ private:
 
     // Create references for local_reference_vars
     for (const auto &var_name : func->local_reference_vars_) {
-      auto it_ref = std::find(func->local_vars_.begin(), func->local_vars_.end(),
-                          var_name);
+      auto it_ref = std::find(func->local_vars_.begin(),
+                              func->local_vars_.end(), var_name);
       if (it_ref != func->local_vars_.end()) {
         size_t var_idx = std::distance(func->local_vars_.begin(), it_ref);
 
@@ -1814,41 +1958,39 @@ private:
     const bytecode::Instruction *end = ip + instructions.size();
 
     // GCC/Clang extension: labels-as-values for computed goto dispatch
-    static void *dispatch_table[] = {
-      &&op_LoadConst,
-      &&op_LoadFunc,
-      &&op_LoadLocal,
-      &&op_StoreLocal,
-      &&op_LoadGlobal,
-      &&op_StoreGlobal,
-      &&op_PushReference,
-      &&op_LoadReference,
-      &&op_StoreReference,
-      &&op_AllocRecord,
-      &&op_FieldLoad,
-      &&op_FieldStore,
-      &&op_IndexLoad,
-      &&op_IndexStore,
-      &&op_AllocClosure,
-      &&op_Call,
-      &&op_Return,
-      &&op_Add,
-      &&op_Sub,
-      &&op_Mul,
-      &&op_Div,
-      &&op_Neg,
-      &&op_Gt,
-      &&op_Geq,
-      &&op_Eq,
-      &&op_And,
-      &&op_Or,
-      &&op_Not,
-      &&op_Goto,
-      &&op_If,
-      &&op_Dup,
-      &&op_Swap,
-      &&op_Pop
-    };
+    static void *dispatch_table[] = {&&op_LoadConst,
+                                     &&op_LoadFunc,
+                                     &&op_LoadLocal,
+                                     &&op_StoreLocal,
+                                     &&op_LoadGlobal,
+                                     &&op_StoreGlobal,
+                                     &&op_PushReference,
+                                     &&op_LoadReference,
+                                     &&op_StoreReference,
+                                     &&op_AllocRecord,
+                                     &&op_FieldLoad,
+                                     &&op_FieldStore,
+                                     &&op_IndexLoad,
+                                     &&op_IndexStore,
+                                     &&op_AllocClosure,
+                                     &&op_Call,
+                                     &&op_Return,
+                                     &&op_Add,
+                                     &&op_Sub,
+                                     &&op_Mul,
+                                     &&op_Div,
+                                     &&op_Neg,
+                                     &&op_Gt,
+                                     &&op_Geq,
+                                     &&op_Eq,
+                                     &&op_And,
+                                     &&op_Or,
+                                     &&op_Not,
+                                     &&op_Goto,
+                                     &&op_If,
+                                     &&op_Dup,
+                                     &&op_Swap,
+                                     &&op_Pop};
 
 #define DISPATCH() goto *dispatch_table[static_cast<int>(ip->operation)]
 
@@ -1863,7 +2005,8 @@ private:
     push(frame, v);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1876,7 +2019,8 @@ private:
     push(frame, TaggedValue::from_heap(allocate<Function>(f)));
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1889,7 +2033,8 @@ private:
     push(frame, local);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1917,7 +2062,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1934,7 +2080,8 @@ private:
     push(frame, globals_by_id[slot]);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1952,7 +2099,8 @@ private:
     globals_initialized[slot] = true;
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1975,7 +2123,8 @@ private:
     push(frame, TaggedValue::from_heap(ref));
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -1988,7 +2137,8 @@ private:
     push(frame, tagged_from_value(ref->cell));
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2003,7 +2153,8 @@ private:
     heap.write_barrier(ref, ref->cell);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2011,7 +2162,8 @@ private:
     push(frame, TaggedValue::from_heap(allocate<Record>()));
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
 
   op_FieldLoad: {
@@ -2029,11 +2181,11 @@ private:
       rec->named_fields.resize(slot + 1, nullptr);
     }
     Value *field_val = rec->named_fields[slot];
-    push(frame,
-         field_val ? tagged_from_value(field_val) : TaggedValue::none());
+    push(frame, field_val ? tagged_from_value(field_val) : TaggedValue::none());
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2058,7 +2210,8 @@ private:
     heap.write_barrier(rec, boxed);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2077,7 +2230,8 @@ private:
     push(frame, result);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2095,7 +2249,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2133,7 +2288,8 @@ private:
     push(frame, TaggedValue::from_heap(closure_val));
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2150,8 +2306,8 @@ private:
     if (closure_val.kind == TaggedValue::Kind::HeapPtr &&
         closure_val.ptr->tag == Value::Type::Closure) {
       auto closure = static_cast<Closure *>(closure_val.ptr);
-      push(frame,
-           execute_function(closure->function, temp_args, closure->free_var_refs));
+      push(frame, execute_function(closure->function, temp_args,
+                                   closure->free_var_refs));
     } else if (closure_val.kind == TaggedValue::Kind::HeapPtr &&
                closure_val.ptr->tag == Value::Type::Function) {
       auto func_ptr_local = static_cast<Function *>(closure_val.ptr);
@@ -2161,7 +2317,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2194,14 +2351,15 @@ private:
       auto ri = get_int(right);
       push(frame, TaggedValue::from_int(li + ri));
     } else if (is_string(left) || is_string(right)) {
-      push(frame, TaggedValue::from_heap(
-                      allocate<String>(tagged_to_string(left) + tagged_to_string(right))));
+      push(frame, TaggedValue::from_heap(allocate<String>(
+                      tagged_to_string(left) + tagged_to_string(right))));
     } else {
       throw IllegalCastException("Invalid operand types for add");
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2222,7 +2380,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2243,7 +2402,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2266,7 +2426,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2282,7 +2443,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2303,7 +2465,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2325,7 +2488,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2335,7 +2499,8 @@ private:
     push(frame, TaggedValue::from_bool(values_equal(left, right)));
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2356,7 +2521,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2377,7 +2543,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2393,7 +2560,8 @@ private:
     }
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2419,7 +2587,8 @@ private:
     } else {
       ++ip;
     }
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2429,7 +2598,8 @@ private:
     push(frame, v);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2440,7 +2610,8 @@ private:
     push(frame, b);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
   }
 
@@ -2448,7 +2619,8 @@ private:
     pop(frame);
 
     ++ip;
-    if (ip == end) goto function_epilogue;
+    if (ip == end)
+      goto function_epilogue;
     DISPATCH();
 
   function_epilogue:
@@ -2474,7 +2646,6 @@ private:
 
 #undef DISPATCH
   }
-
 
   bool values_equal(const TaggedValue &left, const TaggedValue &right) {
     auto is_none = [](const TaggedValue &tv) {
@@ -2535,6 +2706,13 @@ public:
   }
 
   void run(bytecode::Function *main_func) {
+    if (jit_enabled) {
+      // Translate and JIT-compile the entire program to the faster native
+      // entrypoints before execution. The generated stubs hand off to the
+      // register-based interpreter, avoiding repeated decode overhead.
+      ensure_jit_translation(main_func);
+    }
+
     // Eagerly translate the entire function tree to the register-based
     // instruction set so we always execute the faster interpreter.
     translate_function_tree(main_func);
