@@ -74,28 +74,44 @@ class LRUCache {
 		return ks;
 	}
 
-	void remove(const T& key) {
+        void remove(const T& key) {
         auto it = map_.find(key);
         if (it == map_.end()) return;
-        auto* node = it->second;
-        // unlink node
-        if (node->prev) node->prev->next = node->next;
-        else            head_ = node->next;
-        if (node->next) node->next->prev = node->prev;
-        else            tail_ = node->prev;
-        map_.erase(it);
-        delete node;
+        unlinkAndErase(it);
     }
+
+        // Remove the first entry whose stored value matches the provided pointer.
+        // Returns true if an entry was removed.
+        bool removeValue(Value* value) {
+                for (auto it = map_.begin(); it != map_.end(); ++it) {
+                        if (it->second && it->second->value == value) {
+                                unlinkAndErase(it);
+                                return true;
+                        }
+                }
+                return false;
+        }
 
 
  private:
 	std::size_t capacity_;
 	std::unordered_map<T, ListNode<T>*> map_;
-	ListNode<T>* head_ = nullptr;
-	ListNode<T>* tail_ = nullptr;
+        ListNode<T>* head_ = nullptr;
+        ListNode<T>* tail_ = nullptr;
 
-	void moveToHead(ListNode<T>* node) {
-		if (node == head_) return;
+        void unlinkAndErase(typename std::unordered_map<T, ListNode<T>*>::iterator it) {
+                auto* node = it->second;
+                // unlink node
+                if (node->prev) node->prev->next = node->next;
+                else            head_ = node->next;
+                if (node->next) node->next->prev = node->prev;
+                else            tail_ = node->prev;
+                map_.erase(it);
+                delete node;
+        }
+
+        void moveToHead(ListNode<T>* node) {
+                if (node == head_) return;
 		// unlink
 		if (node->prev) node->prev->next = node->next;
 		if (node->next) node->next->prev = node->prev;
