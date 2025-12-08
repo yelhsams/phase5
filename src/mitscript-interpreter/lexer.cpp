@@ -153,7 +153,7 @@ void mitscript::Lexer::skip_ws_and_comments(const char *&p, const char *end, int
 
 mitscript::Token mitscript::Lexer::make_error(const std::string &error_msg, int start_line, int start_col, int end_line, int end_col)
 {
-    return mitscript::Token(mitscript::TokenKind::ERROR, error_msg, start_line, start_col, end_line, end_col);
+    throw std::runtime_error("Lexer error at line " + std::to_string(start_line) + ", col " + std::to_string(start_col) + ": " + error_msg);
 }
 
 mitscript::Lexer::Lexer(const std::string &file_contents)

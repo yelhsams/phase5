@@ -18,29 +18,37 @@
 #include <iostream>
 #include <algorithm>
 
-static std::string read_istream(std::istream &is) {
+static std::string read_istream(std::istream &is)
+{
   return std::string(std::istreambuf_iterator<char>(is),
                      std::istreambuf_iterator<char>());
 }
 
-static bool has_opt(const Command &cmd, const std::string &name) {
-  auto present = [&](const std::string &needle) {
+static bool has_opt(const Command &cmd, const std::string &name)
+{
+  auto present = [&](const std::string &needle)
+  {
     return std::find(cmd.opt.begin(), cmd.opt.end(), needle) != cmd.opt.end();
   };
   // "all" enables every optimization.
   return present(name) || present("all");
 }
 
-static void run_shape_analysis_recursive(mitscript::CFG::FunctionCFG &fn) {
+static void run_shape_analysis_recursive(mitscript::CFG::FunctionCFG &fn)
+{
   // Run intraprocedural shape analysis per function; results are available for later passes.
   (void)mitscript::analysis::run_shape_analysis(fn);
-  for (auto &child : fn.children) {
-    if (child) run_shape_analysis_recursive(*child);
+  for (auto &child : fn.children)
+  {
+    if (child)
+      run_shape_analysis_recursive(*child);
   }
 }
 
-static std::string token_kind_name(const mitscript::Token &t) {
-  switch (t.kind) {
+static std::string token_kind_name(const mitscript::Token &t)
+{
+  switch (t.kind)
+  {
   case mitscript::TokenKind::STRING:
     return "STRINGLITERAL";
   case mitscript::TokenKind::INT:
@@ -58,7 +66,8 @@ static std::string token_kind_name(const mitscript::Token &t) {
   }
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
   Command command = cli_parse(argc, argv);
 
   std::string contents = read_istream(*command.input_stream);
@@ -66,15 +75,19 @@ int main(int argc, char **argv) {
   std::string output_filename = command.output_filename;
 
   bool had_error = false;
-  switch (command.kind) {
-  case CommandKind::SCAN: {
+  switch (command.kind)
+  {
+  case CommandKind::SCAN:
+  {
     mitscript::Lexer lexer(contents);
     std::vector<mitscript::Token> tokens = lexer.lex();
 
     std::ostream &out = *command.output_stream;
 
-    for (const auto &token : tokens) {
-      if (token.kind == mitscript::TokenKind::ERROR) {
+    for (const auto &token : tokens)
+    {
+      if (token.kind == mitscript::TokenKind::ERROR)
+      {
         had_error = true;
         std::cerr << "Error from lexer at line " << token.start_line
                   << ", column " << token.start_col << ": " << token.text
@@ -84,24 +97,32 @@ int main(int argc, char **argv) {
 
       const std::string kind_name = token_kind_name(token);
 
-      if (token.kind == mitscript::TokenKind::EOF_TOKEN) {
+      if (token.kind == mitscript::TokenKind::EOF_TOKEN)
+      {
         out << token.start_line << ' ' << kind_name << '\n';
-      } else if (!kind_name.empty()) {
+      }
+      else if (!kind_name.empty())
+      {
         out << token.start_line << ' ' << kind_name << ' ' << token.text
             << '\n';
-      } else {
+      }
+      else
+      {
         out << token.start_line << ' ' << token.text << '\n';
       }
     }
     break;
   }
 
-  case CommandKind::PARSE: {
+  case CommandKind::PARSE:
+  {
     mitscript::Lexer lexer(contents);
     std::vector<mitscript::Token> tokens = lexer.lex();
 
-    for (const auto &token : tokens) {
-      if (token.kind == mitscript::TokenKind::ERROR) {
+    for (const auto &token : tokens)
+    {
+      if (token.kind == mitscript::TokenKind::ERROR)
+      {
         had_error = true;
         std::cerr << "Error from lexer at line " << token.start_line
                   << ", column " << token.start_col << ": " << token.text
@@ -111,25 +132,30 @@ int main(int argc, char **argv) {
     if (had_error)
       break;
 
-    try {
+    try
+    {
       mitscript::Parser parser(tokens);
       auto ast = parser.parse();
 
       std::cout << "Parse successful\n";
-
-    } catch (const std::exception &e) {
+    }
+    catch (const std::exception &e)
+    {
       had_error = true;
       std::cerr << e.what() << "\n";
     }
     break;
   }
 
-  case CommandKind::COMPILE: {
+  case CommandKind::COMPILE:
+  {
     mitscript::Lexer lexer(contents);
     std::vector<mitscript::Token> tokens = lexer.lex();
 
-    for (const auto &token : tokens) {
-      if (token.kind == mitscript::TokenKind::ERROR) {
+    for (const auto &token : tokens)
+    {
+      if (token.kind == mitscript::TokenKind::ERROR)
+      {
         had_error = true;
         std::cerr << "Error from lexer at line " << token.start_line
                   << ", column " << token.start_col << ": " << token.text
@@ -139,7 +165,8 @@ int main(int argc, char **argv) {
     if (had_error)
       break;
 
-    try {
+    try
+    {
       mitscript::Parser parser(tokens);
       auto ast = parser.parse();
 
@@ -149,34 +176,42 @@ int main(int argc, char **argv) {
       ast->accept(&cfg_builder);
 
       // Optional optimization: constant propagation / folding.
-      if (has_opt(command, "constprop") || has_opt(command, "all")) {
+      if (has_opt(command, "constprop") || has_opt(command, "all"))
+      {
         mitscript::analysis::run_constant_folding(cfg);
       }
 
-      if (has_opt(command, "dce") || has_opt(command, "all")) {
+      if (has_opt(command, "dce") || has_opt(command, "all"))
+      {
         mitscript::analysis::run_dce_on_function(cfg);
       }
 
-      if (has_opt(command, "inline") || has_opt(command, "inlining") || has_opt(command, "all")) {
+      if (has_opt(command, "inline") || has_opt(command, "inlining") || has_opt(command, "all"))
+      {
         mitscript::analysis::InlineConfig icfg;
         mitscript::analysis::run_inlining_pass(cfg, icfg);
       }
 
-      if (has_opt(command, "shape") || has_opt(command, "shapeanalysis") || has_opt(command, "all")) {
+      if (has_opt(command, "shape") || has_opt(command, "shapeanalysis") || has_opt(command, "all"))
+      {
         run_shape_analysis_recursive(cfg);
       }
 
-      auto has_printcfg = [&]() {
+      auto has_printcfg = [&]()
+      {
         return std::find(command.opt.begin(), command.opt.end(), "printcfg") != command.opt.end();
       };
-      if (has_printcfg()) {
+      if (has_printcfg())
+      {
         mitscript::CFG::prettyprint(cfg, *command.output_stream);
       }
 
       BytecodeConverter bc;
       bytecode::Function *bytecode = bc.convert(cfg, /*is_toplevel=*/true);
       bytecode::prettyprint(bytecode, *command.output_stream);
-    } catch (const std::exception &e) {
+    }
+    catch (const std::exception &e)
+    {
       std::cout << "Compilation error:\n";
       had_error = true;
       std::cerr << e.what() << "\n";
@@ -184,23 +219,14 @@ int main(int argc, char **argv) {
 
     break;
   }
-  case CommandKind::DERBY: {
-    // Compile source to bytecode and immediately execute on the VM.
-    mitscript::Lexer lexer(contents);
-    std::vector<mitscript::Token> tokens = lexer.lex();
+  case CommandKind::DERBY:
+  {
+    try
+    {
+      // Compile source to bytecode and immediately execute on the VM.
+      mitscript::Lexer lexer(contents);
+      std::vector<mitscript::Token> tokens = lexer.lex();
 
-    for (const auto &token : tokens) {
-      if (token.kind == mitscript::TokenKind::ERROR) {
-        had_error = true;
-        std::cerr << "Error from lexer at line " << token.start_line
-                  << ", column " << token.start_col << ": " << token.text
-                  << "\n";
-      }
-    }
-    if (had_error)
-      break;
-
-    try {
       mitscript::Parser parser(tokens);
       auto ast = parser.parse();
 
@@ -210,28 +236,34 @@ int main(int argc, char **argv) {
       ast->accept(&cfg_builder);
 
       // Optional optimization: constant propagation / folding.
-      if (has_opt(command, "constprop") || has_opt(command, "all")) {
+      if (has_opt(command, "constprop") || has_opt(command, "all"))
+      {
         mitscript::analysis::run_constant_folding(cfg);
       }
 
-      if (has_opt(command, "dce") || has_opt(command, "all")) {
+      if (has_opt(command, "dce") || has_opt(command, "all"))
+      {
         mitscript::analysis::run_dce_on_function(cfg);
       }
 
-      if (has_opt(command, "inline") || has_opt(command, "inlining") || has_opt(command, "all")) {
+      if (has_opt(command, "inline") || has_opt(command, "inlining") || has_opt(command, "all"))
+      {
         mitscript::analysis::InlineConfig icfg;
         mitscript::analysis::run_inlining_pass(cfg, icfg);
       }
 
-      if (has_opt(command, "shape") || has_opt(command, "shapeanalysis") || has_opt(command, "all")) {
+      if (has_opt(command, "shape") || has_opt(command, "shapeanalysis") || has_opt(command, "all"))
+      {
         run_shape_analysis_recursive(cfg);
       }
 
       // Optional: print CFG before lowering to bytecode
-      auto has_printcfg = [&]() {
+      auto has_printcfg = [&]()
+      {
         return std::find(command.opt.begin(), command.opt.end(), "printcfg") != command.opt.end();
       };
-      if (has_printcfg()) {
+      if (has_printcfg())
+      {
         mitscript::CFG::prettyprint(cfg, *command.output_stream);
       }
 
@@ -240,18 +272,23 @@ int main(int argc, char **argv) {
       // bytecode::opt_inline::inline_functions(bytecode);
       vm::VM vm(command.mem);
       vm.run(bytecode);
-    } catch (const std::exception &e) {
+    }
+    catch (const std::exception &e)
+    {
       had_error = true;
       std::cerr << e.what() << "\n";
     }
     break;
   }
-  case CommandKind::INTERPRET: {
+  case CommandKind::INTERPRET:
+  {
     mitscript::Lexer lexer(contents);
     std::vector<mitscript::Token> tokens = lexer.lex();
 
-    for (const auto &token : tokens) {
-      if (token.kind == mitscript::TokenKind::ERROR) {
+    for (const auto &token : tokens)
+    {
+      if (token.kind == mitscript::TokenKind::ERROR)
+      {
         had_error = true;
         std::cerr << "Error from lexer at line " << token.start_line
                   << ", column " << token.start_col << ": " << token.text
@@ -261,21 +298,25 @@ int main(int argc, char **argv) {
     if (had_error)
       break;
 
-    try {
+    try
+    {
       mitscript::Parser parser(tokens);
       auto ast = parser.parse();
 
       mitscript::interpret(*ast);
-
-    } catch (const std::exception &e) {
+    }
+    catch (const std::exception &e)
+    {
       had_error = true;
       std::cerr << e.what() << "\n";
     }
     break;
   }
 
-  case CommandKind::VM: {
-    try {
+  case CommandKind::VM:
+  {
+    try
+    {
       // Parse bytecode
       bytecode::Function *bytecode_func = bytecode::parse(contents);
 
@@ -290,23 +331,34 @@ int main(int argc, char **argv) {
 
       // Cleanup
       delete bytecode_func;
-
-    } catch (const vm::InsufficientStackException &e) {
+    }
+    catch (const vm::InsufficientStackException &e)
+    {
       had_error = true;
       std::cerr << e.what() << "\n";
-    } catch (const vm::UninitializedVariableException &e) {
+    }
+    catch (const vm::UninitializedVariableException &e)
+    {
       had_error = true;
       std::cerr << e.what() << "\n";
-    } catch (const vm::IllegalCastException &e) {
+    }
+    catch (const vm::IllegalCastException &e)
+    {
       had_error = true;
       std::cerr << e.what() << "\n";
-    } catch (const vm::IllegalArithmeticException &e) {
+    }
+    catch (const vm::IllegalArithmeticException &e)
+    {
       had_error = true;
       std::cerr << e.what() << "\n";
-    } catch (const vm::RuntimeException &e) {
+    }
+    catch (const vm::RuntimeException &e)
+    {
       had_error = true;
       std::cerr << e.what() << "\n";
-    } catch (const std::exception &e) {
+    }
+    catch (const std::exception &e)
+    {
       had_error = true;
       std::cerr << "Error: " << e.what() << "\n";
     }
