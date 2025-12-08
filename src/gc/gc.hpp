@@ -25,6 +25,7 @@ private:
   Collectable *next_ = nullptr;
   Collectable *prev_ = nullptr;
   std::size_t size_ = 0;
+  std::size_t young_index_ = 0; // index within heap's young_objects_
 
   // Simple generational metadata
   uint8_t generation_ = 0;     // 0 = young, 1 = old (expandable)
@@ -61,6 +62,11 @@ public:
 
   // Remembered set for old objects that may point to young ones
   std::vector<Collectable *> remembered_;
+  std::vector<Collectable *> young_objects_;
+
+  // Track which objects were marked so we can efficiently clear the flag
+  // without walking the entire heap during a minor collection.
+  std::vector<Collectable *> marked_objects_;
 
   // Simple heuristics to decide between minor and full collection
   std::size_t young_bytes_ = 0;
@@ -136,6 +142,8 @@ public:
     allocated_bytes_ += obj->size_;
     objects_allocated_ += 1;
     young_bytes_ += obj->size_;
+    obj->young_index_ = young_objects_.size();
+    young_objects_.push_back(obj);
     return obj;
   }
 
@@ -152,6 +160,7 @@ public:
       return;
     next->marked_ = true;
     mark_stack_.push_back(next);
+    marked_objects_.push_back(next);
   }
 
   /*
@@ -203,40 +212,40 @@ public:
 
     drain_mark_stack();
 
-    Collectable *cur = head_;
-    while (cur) {
-      Collectable *next = cur->next_;
+    for (Collectable *obj : remembered_) {
+      if (obj && obj->marked_) {
+        new_remembered.push_back(obj);
+      }
+    }
+
+    std::size_t idx = 0;
+    while (idx < young_objects_.size()) {
+      Collectable *cur = young_objects_[idx];
       if (!cur->marked_) {
-        if (is_young(cur)) {
-          if (cur->prev_)
-            cur->prev_->next_ = next;
-          else
-            head_ = next;
+        unlink_from_list(cur);
 
-          if (next)
-            next->prev_ = cur->prev_;
-
-          while (allocation_cache->removeValue(
-              reinterpret_cast<mitscript::Value *>(cur))) {
-          }
-          allocated_bytes_ -= cur->size_;
-          objects_allocated_ -= 1;
-          young_bytes_ -= cur->size_;
-          delete cur;
+        while (allocation_cache->removeValue(
+            reinterpret_cast<mitscript::Value *>(cur))) {
         }
-        // unreachable old objects collected only in full GC
+        allocated_bytes_ -= cur->size_;
+        objects_allocated_ -= 1;
+        young_bytes_ -= cur->size_;
+        remove_from_young(idx);
+        delete cur;
       } else {
         cur->marked_ = false;
-        if (is_young(cur)) {
-          cur->generation_ = 1;
-          promoted_bytes_since_full_ += cur->size_;
-          young_bytes_ -= cur->size_;
-        } else if (cur->in_remembered_) {
-          new_remembered.push_back(cur);
-        }
+        cur->generation_ = 1;
+        cur->in_remembered_ = false;
+        promoted_bytes_since_full_ += cur->size_;
+        young_bytes_ -= cur->size_;
+        remove_from_young(idx);
       }
-      cur = next;
     }
+
+    for (Collectable *obj : marked_objects_) {
+      obj->marked_ = false;
+    }
+    marked_objects_.clear();
 
     remembered_.swap(new_remembered);
   }
@@ -281,8 +290,10 @@ public:
     }
     remembered_.clear();
     young_bytes_ = 0;
+    young_objects_.clear();
     promoted_bytes_since_full_ = 0;
     minor_since_full_ = 0;
+    marked_objects_.clear();
   }
 
 private:
@@ -292,9 +303,30 @@ private:
 
   std::vector<Collectable *> mark_stack_{};
 
+  void remove_from_young(std::size_t idx) {
+    std::size_t last = young_objects_.size() - 1;
+    if (idx != last) {
+      Collectable *swap = young_objects_[last];
+      young_objects_[idx] = swap;
+      swap->young_index_ = idx;
+    }
+    young_objects_.pop_back();
+  }
+
+  void unlink_from_list(Collectable *obj) {
+    if (obj->prev_)
+      obj->prev_->next_ = obj->next_;
+    else
+      head_ = obj->next_;
+
+    if (obj->next_)
+      obj->next_->prev_ = obj->prev_;
+  }
+
   void start_mark_phase() {
     mark_stack_.clear();
     mark_stack_.reserve(256);
+    marked_objects_.clear();
   }
 
   void drain_mark_stack() {
