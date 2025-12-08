@@ -151,7 +151,7 @@ public:
     if (next->marked_)
       return;
     next->marked_ = true;
-    next->follow(*this);
+    mark_stack_.push_back(next);
   }
 
   /*
@@ -184,6 +184,8 @@ public:
   }
 
   template <typename Iterator> void minor_gc(Iterator begin, Iterator end) {
+    start_mark_phase();
+
     std::vector<Collectable *> new_remembered;
     new_remembered.reserve(remembered_.size());
 
@@ -198,6 +200,8 @@ public:
         markSuccessors(obj);
       }
     }
+
+    drain_mark_stack();
 
     Collectable *cur = head_;
     while (cur) {
@@ -238,9 +242,13 @@ public:
   }
 
   template <typename Iterator> void full_gc(Iterator begin, Iterator end) {
+    start_mark_phase();
+
     for (auto it = begin; it != end; ++it) {
       markSuccessors(*it);
     }
+
+    drain_mark_stack();
 
     Collectable *cur = head_;
     while (cur) {
@@ -281,4 +289,19 @@ private:
   Collectable *head_ = nullptr;
   std::size_t allocated_bytes_ = 0;
   std::size_t objects_allocated_ = 0;
+
+  std::vector<Collectable *> mark_stack_{};
+
+  void start_mark_phase() {
+    mark_stack_.clear();
+    mark_stack_.reserve(256);
+  }
+
+  void drain_mark_stack() {
+    while (!mark_stack_.empty()) {
+      Collectable *obj = mark_stack_.back();
+      mark_stack_.pop_back();
+      obj->follow(*this);
+    }
+  }
 };
