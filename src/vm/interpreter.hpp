@@ -1852,6 +1852,14 @@ private:
           roots.push_back(local.ptr);
       }
 
+      // Free variable references captured by the running closure
+      if (frame->free_refs) {
+        for (Value *ref : *frame->free_refs) {
+          if (ref)
+            roots.push_back(ref);
+        }
+      }
+
       // Add operand stack contents
       for (size_t i = 0; i < frame->sp; ++i) {
         if (frame->stack[i].kind == TaggedValue::Kind::HeapPtr &&
