@@ -513,6 +513,7 @@ struct CFGBuilder : public Visitor {
     void visit(FunctionDeclaration* node) override {
         // Build child function CFG
         auto childFunction = std::make_unique<FunctionCFG>();
+        childFunction->name = node->name;
 
         // Compute the set of parent locals for free-var analysis
         auto parentLocalSet = std::make_shared<std::unordered_set<std::string>>();

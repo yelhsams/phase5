@@ -12,8 +12,9 @@
 #include <vector>
 #include <unordered_map>
 #include <cstdint>
+#include <limits>
 
-
+//
 namespace vm {
 
 // Forward declarations
@@ -187,29 +188,51 @@ protected:
 class Record : public Value {
 public:
   std::unordered_map<std::string, Value *> fields;
+  bool dense_mode = true;            // start as dense integer array
+  std::vector<TaggedValue> dense;    // fast path storage for int keys
+  std::vector<Value *> named_fields; // indexed by integer field id
   // std::map<int64_t, Value *> indices;
   // size_t next_index = 0;
 
   Record() : Value(Type::Record) {}
 
   std::string toString() const override {
+    auto tagged_to_string_local = [](const TaggedValue &tv) -> std::string {
+      switch (tv.kind) {
+      case TaggedValue::Kind::None:
+        return "None";
+      case TaggedValue::Kind::Boolean:
+        return tv.b ? "true" : "false";
+      case TaggedValue::Kind::Integer:
+        return std::to_string(tv.i);
+      case TaggedValue::Kind::HeapPtr:
+        return tv.ptr ? tv.ptr->toString() : "None";
+      }
+      return "None";
+    };
+
     std::string result = "{";
 
-    std::vector<std::pair<std::string, Value *>> entries;
-    // entries.reserve(fields.size() + indices.size());
+    std::vector<std::pair<std::string, std::string>> entries;
 
-    // for (const auto &[idx, val] : indices) {
-    //   entries.emplace_back(std::to_string(idx), val);
-    // }
+    if (dense_mode) {
+      for (size_t i = 0; i < dense.size(); ++i) {
+        const TaggedValue &tv = dense[i];
+        if (tv.kind == TaggedValue::Kind::None)
+          continue;
+        entries.emplace_back(std::to_string(i), tagged_to_string_local(tv));
+      }
+    }
+
     for (const auto &pair : fields) {
-      entries.push_back(pair);
+      entries.emplace_back(pair.first, pair.second->toString());
     }
 
     std::sort(entries.begin(), entries.end(),
               [](const auto &a, const auto &b) { return a.first < b.first; });
 
     for (const auto &entry : entries) {
-      result += entry.first + ":" + entry.second->toString() + " ";
+      result += entry.first + ":" + entry.second + " ";
     }
     result += "}";
     return result;
@@ -217,6 +240,21 @@ public:
 
 protected:
   void follow(CollectedHeap &heap) override {
+    // Mark dense storage
+    if (dense_mode) {
+      for (const auto &tv : dense) {
+        if (tv.kind == TaggedValue::Kind::HeapPtr && tv.ptr) {
+          heap.markSuccessors(tv.ptr);
+        }
+      }
+    }
+
+    for (Value *val : named_fields) {
+      if (val) {
+        heap.markSuccessors(val);
+      }
+    }
+
     for (auto &[name, val] : fields) {
       heap.markSuccessors(val);
     }
@@ -296,7 +334,13 @@ struct Frame {
 class VM {
 private:
   CollectedHeap heap;
-  std::unordered_map<std::string, TaggedValue> globals;
+  std::vector<TaggedValue> globals_by_id;
+  std::vector<bool> globals_initialized;
+  std::unordered_map<std::string, size_t> global_name_to_slot;
+  std::unordered_map<bytecode::Function *, std::vector<size_t>> global_slot_cache;
+  std::unordered_map<std::string, size_t> field_name_to_slot;
+  std::unordered_map<bytecode::Function *, std::vector<size_t>> field_slot_cache;
+  static constexpr size_t kInvalidSlot = std::numeric_limits<size_t>::max();
   size_t max_heap_bytes;
   std::unordered_map<bytecode::Function *, int>
       native_functions; // Map function to native ID
@@ -428,6 +472,211 @@ private:
     return none_singleton;
   }
 
+  bool tagged_to_int(const TaggedValue &tv, int32_t &out) const {
+    switch (tv.kind) {
+    case TaggedValue::Kind::Integer:
+      out = tv.i;
+      return true;
+    case TaggedValue::Kind::HeapPtr:
+      if (tv.ptr && tv.ptr->tag == Value::Type::Integer) {
+        out = static_cast<Integer *>(tv.ptr)->value;
+        return true;
+      }
+      return false;
+    default:
+      return false;
+    }
+  }
+
+  void degrade_record_to_map(Record *rec) {
+    if (!rec || !rec->dense_mode)
+      return;
+    for (size_t i = 0; i < rec->dense.size(); ++i) {
+      const TaggedValue &tv = rec->dense[i];
+      if (tv.kind == TaggedValue::Kind::None)
+        continue;
+      Value *boxed = box_tagged(tv);
+      std::string key = std::to_string(i);
+      rec->fields[key] = boxed;
+      heap.write_barrier(rec, boxed);
+    }
+    rec->dense.clear();
+    rec->dense_mode = false;
+  }
+
+  bool record_try_dense_store(Record *rec,
+                              const TaggedValue &idx_tv,
+                              const TaggedValue &val_tv) {
+    if (!rec || !rec->dense_mode)
+      return false;
+    int32_t idx = -1;
+    if (!tagged_to_int(idx_tv, idx) || idx < 0) {
+      // Non-integer key degrades to generic map mode.
+      if (!(idx_tv.kind == TaggedValue::Kind::Integer ||
+            (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
+             idx_tv.ptr && idx_tv.ptr->tag == Value::Type::Integer))) {
+        degrade_record_to_map(rec);
+      }
+      return false;
+    }
+
+    size_t uidx = static_cast<size_t>(idx);
+    if (uidx >= rec->dense.size()) {
+      rec->dense.resize(uidx + 1, TaggedValue::none());
+    }
+    rec->dense[uidx] = val_tv;
+    if (val_tv.kind == TaggedValue::Kind::HeapPtr && val_tv.ptr) {
+      heap.write_barrier(rec, val_tv.ptr);
+    }
+    return true;
+  }
+
+  bool record_try_dense_load(Record *rec,
+                             const TaggedValue &idx_tv,
+                             TaggedValue &out) {
+    if (!rec || !rec->dense_mode)
+      return false;
+    int32_t idx = -1;
+    if (!tagged_to_int(idx_tv, idx) || idx < 0) {
+      // Only degrade on non-integer keys.
+      if (!(idx_tv.kind == TaggedValue::Kind::Integer ||
+            (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
+             idx_tv.ptr && idx_tv.ptr->tag == Value::Type::Integer))) {
+        degrade_record_to_map(rec);
+      }
+      return false;
+    }
+    size_t uidx = static_cast<size_t>(idx);
+    if (uidx < rec->dense.size()) {
+      out = rec->dense[uidx];
+    } else {
+      out = TaggedValue::none();
+    }
+    return true;
+  }
+
+  TaggedValue record_map_load(Record *rec, const TaggedValue &idx_tv) {
+    if (!rec)
+      throw IllegalCastException("Expected record");
+    std::string key;
+    if (idx_tv.kind == TaggedValue::Kind::Integer) {
+      key = std::to_string(idx_tv.i);
+    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
+               idx_tv.ptr &&
+               idx_tv.ptr->tag == Value::Type::Integer) {
+      key = std::to_string(static_cast<Integer *>(idx_tv.ptr)->value);
+    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
+               idx_tv.ptr &&
+               idx_tv.ptr->tag == Value::Type::String) {
+      key = static_cast<String *>(idx_tv.ptr)->value;
+      size_t slot = ensure_field_slot(key);
+      if (slot < rec->named_fields.size()) {
+        if (Value *named = rec->named_fields[slot]) {
+          return tagged_from_value(named);
+        }
+      }
+    } else {
+      throw IllegalCastException("Invalid index type");
+    }
+
+    auto it = rec->fields.find(key);
+    if (it != rec->fields.end())
+      return tagged_from_value(it->second);
+    return TaggedValue::none();
+  }
+
+  void record_map_store(Record *rec,
+                        const TaggedValue &idx_tv,
+                        const TaggedValue &val_tv) {
+    if (!rec)
+      throw IllegalCastException("Expected record");
+    std::string key;
+    if (idx_tv.kind == TaggedValue::Kind::Integer) {
+      key = std::to_string(idx_tv.i);
+    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
+               idx_tv.ptr &&
+               idx_tv.ptr->tag == Value::Type::Integer) {
+      key = std::to_string(static_cast<Integer *>(idx_tv.ptr)->value);
+    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
+               idx_tv.ptr &&
+               idx_tv.ptr->tag == Value::Type::String) {
+      key = static_cast<String *>(idx_tv.ptr)->value;
+    } else {
+      throw IllegalCastException("Invalid index type");
+    }
+
+    Value *boxed = box_tagged(val_tv);
+    rec->fields[key] = boxed;
+    heap.write_barrier(rec, boxed);
+
+    // Keep named_fields in sync for string keys to preserve fast path lookups.
+    if (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
+        idx_tv.ptr &&
+        idx_tv.ptr->tag == Value::Type::String) {
+      size_t slot = ensure_field_slot(key);
+      if (slot >= rec->named_fields.size()) {
+        rec->named_fields.resize(slot + 1, nullptr);
+      }
+      rec->named_fields[slot] = boxed;
+    }
+  }
+
+  size_t ensure_global_slot(const std::string &name) {
+    auto it = global_name_to_slot.find(name);
+    if (it != global_name_to_slot.end()) {
+      return it->second;
+    }
+    size_t slot = global_name_to_slot.size();
+    global_name_to_slot[name] = slot;
+    if (slot >= globals_by_id.size()) {
+      globals_by_id.resize(slot + 1, TaggedValue::none());
+      globals_initialized.resize(slot + 1, false);
+    }
+    return slot;
+  }
+
+  size_t get_global_slot(bytecode::Function *func, size_t name_idx) {
+    if (name_idx >= func->names_.size()) {
+      throw RuntimeException("Global name index out of range");
+    }
+    auto &slots = global_slot_cache[func];
+    if (slots.size() < func->names_.size()) {
+      slots.resize(func->names_.size(), kInvalidSlot);
+    }
+    size_t slot = slots[name_idx];
+    if (slot == kInvalidSlot) {
+      slot = ensure_global_slot(func->names_[name_idx]);
+      slots[name_idx] = slot;
+    }
+    return slot;
+  }
+
+  size_t ensure_field_slot(const std::string &name) {
+    auto it = field_name_to_slot.find(name);
+    if (it != field_name_to_slot.end()) {
+      return it->second;
+    }
+    size_t slot = field_name_to_slot.size();
+    field_name_to_slot[name] = slot;
+    return slot;
+  }
+
+  size_t get_field_slot(bytecode::Function *func, size_t name_idx) {
+    if (name_idx >= func->names_.size()) {
+      throw RuntimeException("Field name index out of range");
+    }
+    auto &slots = field_slot_cache[func];
+    if (slots.size() < func->names_.size()) {
+      slots.resize(func->names_.size(), kInvalidSlot);
+    }
+    size_t slot = slots[name_idx];
+    if (slot == kInvalidSlot) {
+      slot = ensure_field_slot(func->names_[name_idx]);
+      slots[name_idx] = slot;
+    }
+    return slot;
+  }
+
   void translate_stack_to_reg(bytecode::Function *func) {
     using bytecode::Operation;
     struct RegAlloc {
@@ -454,6 +703,11 @@ private:
     auto ensure_reg_count = [&](uint16_t idx) {
       if (idx > alloc.max_used) alloc.max_used = idx;
     };
+    auto require_stack = [&](size_t need) {
+      if (vstack.size() < need) {
+        throw RuntimeException("Translate: stack underflow");
+      }
+    };
     ensure_reg_count(static_cast<uint16_t>(func->local_vars_.size() ? func->local_vars_.size() - 1 : 0));
 
     for (size_t pc = 0; pc < func->instructions.size(); ++pc) {
@@ -474,13 +728,20 @@ private:
       }
       case Operation::LoadLocal: {
         uint16_t reg = static_cast<uint16_t>(in.operand0.value());
+        if (reg >= func->local_vars_.size()) {
+          throw RuntimeException("Translate: local variable index out of range");
+        }
         ensure_reg_count(reg);
         vstack.push_back(reg);
         break;
       }
       case Operation::StoreLocal: {
+        require_stack(1);
         uint16_t val = vstack.back(); vstack.pop_back();
         uint16_t dst = static_cast<uint16_t>(in.operand0.value());
+        if (dst >= func->local_vars_.size()) {
+          throw RuntimeException("Translate: local variable index out of range");
+        }
         ensure_reg_count(dst);
         out.push_back({Operation::StoreLocal, dst, val, 0, 0});
         break;
@@ -494,6 +755,7 @@ private:
       case Operation::Eq:
       case Operation::And:
       case Operation::Or: {
+        require_stack(2);
         uint16_t right = vstack.back(); vstack.pop_back();
         uint16_t left = vstack.back(); vstack.pop_back();
         uint16_t dst = alloc.fresh();
@@ -503,6 +765,7 @@ private:
       }
       case Operation::Neg:
       case Operation::Not: {
+        require_stack(1);
         uint16_t val = vstack.back(); vstack.pop_back();
         uint16_t dst = alloc.fresh();
         out.push_back({in.operation, dst, val, 0, 0});
@@ -531,11 +794,13 @@ private:
         break;
       }
       case Operation::Dup: {
+        require_stack(1);
         uint16_t v = vstack.back();
         vstack.push_back(v);
         break;
       }
       case Operation::Swap: {
+        require_stack(2);
         uint16_t a = vstack.back(); vstack.pop_back();
         uint16_t b = vstack.back(); vstack.pop_back();
         vstack.push_back(a);
@@ -543,11 +808,15 @@ private:
         break;
       }
       case Operation::Pop: {
+        require_stack(1);
         vstack.pop_back();
         break;
       }
       case Operation::Call: {
         int32_t arg_count = in.operand0.value();
+        if (arg_count < 0 || vstack.size() < static_cast<size_t>(arg_count + 1)) {
+          throw RuntimeException("Translate: stack underflow");
+        }
         std::vector<uint16_t> args;
         args.reserve(arg_count);
         for (int i = 0; i < arg_count; ++i) {
@@ -575,6 +844,7 @@ private:
         break;
       }
       case Operation::Return: {
+        require_stack(1);
         uint16_t ret = vstack.back(); vstack.pop_back();
         out.push_back({Operation::Return, 0, ret, 0, 0});
         break;
@@ -586,6 +856,7 @@ private:
         break;
       }
       case Operation::StoreGlobal: {
+        require_stack(1);
         uint16_t val = vstack.back(); vstack.pop_back();
         out.push_back({Operation::StoreGlobal, 0, val, 0, in.operand0.value()});
         break;
@@ -597,6 +868,7 @@ private:
         break;
       }
       case Operation::LoadReference: {
+        require_stack(1);
         uint16_t ref = vstack.back(); vstack.pop_back();
         uint16_t dst = alloc.fresh();
         out.push_back({Operation::LoadReference, dst, ref, 0, 0});
@@ -604,6 +876,7 @@ private:
         break;
       }
       case Operation::StoreReference: {
+        require_stack(2);
         uint16_t val = vstack.back(); vstack.pop_back();
         uint16_t ref = vstack.back(); vstack.pop_back();
         out.push_back({Operation::StoreReference, 0, val, ref, 0});
@@ -616,6 +889,7 @@ private:
         break;
       }
       case Operation::FieldLoad: {
+        require_stack(1);
         uint16_t rec = vstack.back(); vstack.pop_back();
         uint16_t dst = alloc.fresh();
         out.push_back({Operation::FieldLoad, dst, rec, 0, in.operand0.value()});
@@ -623,12 +897,14 @@ private:
         break;
       }
       case Operation::FieldStore: {
+        require_stack(2);
         uint16_t val = vstack.back(); vstack.pop_back();
         uint16_t rec = vstack.back(); vstack.pop_back();
         out.push_back({Operation::FieldStore, 0, val, rec, in.operand0.value()});
         break;
       }
       case Operation::IndexLoad: {
+        require_stack(2);
         uint16_t idx = vstack.back(); vstack.pop_back();
         uint16_t rec = vstack.back(); vstack.pop_back();
         uint16_t dst = alloc.fresh();
@@ -637,6 +913,7 @@ private:
         break;
       }
       case Operation::IndexStore: {
+        require_stack(3);
         uint16_t val = vstack.back(); vstack.pop_back();
         uint16_t idx = vstack.back(); vstack.pop_back();
         uint16_t rec = vstack.back(); vstack.pop_back();
@@ -645,6 +922,9 @@ private:
       }
       case Operation::AllocClosure: {
         int32_t free_count = in.operand0.value();
+        if (free_count < 0 || vstack.size() < static_cast<size_t>(free_count + 1)) {
+          throw RuntimeException("Translate: stack underflow");
+        }
         std::vector<uint16_t> refs;
         refs.reserve(free_count);
         for (int i = 0; i < free_count; ++i) {
@@ -687,6 +967,16 @@ private:
 
     func->register_count = alloc.max_used + 1;
     func->reg_instructions = std::move(out);
+  }
+
+  void translate_function_tree(bytecode::Function *func) {
+    if (!func) return;
+    if (func->reg_instructions.empty()) {
+      translate_stack_to_reg(func);
+    }
+    for (auto *child : func->functions_) {
+      translate_function_tree(child);
+    }
   }
 
   TaggedValue execute_function_reg(bytecode::Function *func,
@@ -806,6 +1096,9 @@ private:
   }
 
   op_LoadLocalR: {
+    if (ip->src1 >= frame.locals.size()) {
+      throw RuntimeException("LoadLocal: local variable index out of range");
+    }
     TaggedValue v = frame.locals[ip->src1];
     frame.locals[ip->dst] = v;
     ++ip;
@@ -814,6 +1107,9 @@ private:
   }
 
   op_StoreLocalR: {
+    if (ip->src1 >= frame.locals.size()) {
+      throw RuntimeException("StoreLocal: local variable index out of range");
+    }
     TaggedValue val = frame.locals[ip->src1];
     uint16_t dst = ip->dst;
     if (frame.ref_locals.find(dst) != frame.ref_locals.end()) {
@@ -839,12 +1135,12 @@ private:
     if (idx >= func->names_.size()) {
       throw RuntimeException("LoadGlobal: name index out of range");
     }
-    const std::string &name = func->names_[idx];
-    auto it_g = globals.find(name);
-    if (it_g == globals.end()) {
-      throw UninitializedVariableException("Undefined global: " + name);
+    size_t slot = get_global_slot(func, idx);
+    if (slot >= globals_initialized.size() || !globals_initialized[slot]) {
+      throw UninitializedVariableException("Undefined global at slot " +
+                                           std::to_string(slot));
     }
-    frame.locals[ip->dst] = it_g->second;
+    frame.locals[ip->dst] = globals_by_id[slot];
     ++ip;
     if (ip == end) goto function_epilogue_reg;
     DISPATCH_REG();
@@ -855,8 +1151,12 @@ private:
     if (idx >= func->names_.size()) {
       throw RuntimeException("StoreGlobal: name index out of range");
     }
-    const std::string &name = func->names_[idx];
-    globals[name] = frame.locals[ip->src1];
+    size_t slot = get_global_slot(func, idx);
+    globals_by_id[slot] = frame.locals[ip->src1];
+    if (slot >= globals_initialized.size()) {
+      globals_initialized.resize(slot + 1, false);
+    }
+    globals_initialized[slot] = true;
     ++ip;
     if (ip == end) goto function_epilogue_reg;
     DISPATCH_REG();
@@ -925,13 +1225,13 @@ private:
     if (idx >= func->names_.size()) {
       throw RuntimeException("FieldLoad: name index out of range");
     }
-    const std::string &field = func->names_[idx];
-    auto it = rec->fields.find(field);
-    if (it == rec->fields.end()) {
-      frame.locals[ip->dst] = TaggedValue::none();
-    } else {
-      frame.locals[ip->dst] = tagged_from_value(it->second);
+    size_t slot = get_field_slot(func, idx);
+    if (slot >= rec->named_fields.size()) {
+      rec->named_fields.resize(slot + 1, nullptr);
     }
+    Value *field_val = rec->named_fields[slot];
+    frame.locals[ip->dst] =
+        field_val ? tagged_from_value(field_val) : TaggedValue::none();
     ++ip;
     if (ip == end) goto function_epilogue_reg;
     DISPATCH_REG();
@@ -948,9 +1248,13 @@ private:
     if (idx >= func->names_.size()) {
       throw RuntimeException("FieldStore: name index out of range");
     }
-    const std::string &field = func->names_[idx];
     Value *boxed = box_tagged(val_tv);
-    rec->fields[field] = boxed;
+    size_t slot = get_field_slot(func, idx);
+    if (slot >= rec->named_fields.size()) {
+      rec->named_fields.resize(slot + 1, nullptr);
+    }
+    rec->named_fields[slot] = boxed;
+    rec->fields[func->names_[idx]] = boxed;
     heap.write_barrier(rec, boxed);
     ++ip;
     if (ip == end) goto function_epilogue_reg;
@@ -964,26 +1268,9 @@ private:
         rec_tv.ptr->tag != Value::Type::Record)
       throw IllegalCastException("Expected record");
     auto rec = static_cast<Record *>(rec_tv.ptr);
-
     TaggedValue result = TaggedValue::none();
-    if (idx_tv.kind == TaggedValue::Kind::Integer ||
-        (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-         idx_tv.ptr->tag == Value::Type::Integer)) {
-      auto idx = idx_tv.kind == TaggedValue::Kind::Integer
-                     ? idx_tv.i
-                     : static_cast<Integer *>(idx_tv.ptr)->value;
-      std::string key = std::to_string(idx);
-      auto it = rec->fields.find(key);
-      if (it != rec->fields.end())
-        result = tagged_from_value(it->second);
-    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-               idx_tv.ptr->tag == Value::Type::String) {
-      const std::string &key = static_cast<String *>(idx_tv.ptr)->value;
-      auto it = rec->fields.find(key);
-      if (it != rec->fields.end())
-        result = tagged_from_value(it->second);
-    } else {
-      throw IllegalCastException("Invalid index type");
+    if (!record_try_dense_load(rec, idx_tv, result)) {
+      result = record_map_load(rec, idx_tv);
     }
     frame.locals[ip->dst] = result;
     ++ip;
@@ -999,22 +1286,9 @@ private:
         rec_tv.ptr->tag != Value::Type::Record)
       throw IllegalCastException("Expected record");
     auto rec = static_cast<Record *>(rec_tv.ptr);
-    Value *boxed = box_tagged(val_tv);
-
-    if (idx_tv.kind == TaggedValue::Kind::Integer ||
-        (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-         idx_tv.ptr->tag == Value::Type::Integer)) {
-      auto idx = idx_tv.kind == TaggedValue::Kind::Integer
-                     ? idx_tv.i
-                     : static_cast<Integer *>(idx_tv.ptr)->value;
-      rec->fields[std::to_string(idx)] = boxed;
-    } else if (idx_tv.kind == TaggedValue::Kind::HeapPtr &&
-               idx_tv.ptr->tag == Value::Type::String) {
-      rec->fields[static_cast<String *>(idx_tv.ptr)->value] = boxed;
-    } else {
-      throw IllegalCastException("Invalid index type");
+    if (!record_try_dense_store(rec, idx_tv, val_tv)) {
+      record_map_store(rec, idx_tv, val_tv);
     }
-    heap.write_barrier(rec, boxed);
     ++ip;
     if (ip == end) goto function_epilogue_reg;
     DISPATCH_REG();
@@ -1333,7 +1607,11 @@ private:
 
   function_epilogue_reg:
     call_stack.pop_back();
+    bool is_main = call_stack.empty();
     if (!returned && !func->instructions.empty()) {
+      if (is_main) {
+        return TaggedValue::none();
+      }
       throw RuntimeException("Function must end with a return statement");
     }
     return ret_val;
@@ -1404,7 +1682,10 @@ private:
     std::vector<Collectable *> roots;
 
     // Add globals
-    for (auto &[name, val] : globals) {
+    for (size_t i = 0; i < globals_by_id.size(); ++i) {
+      if (i >= globals_initialized.size() || !globals_initialized[i])
+        continue;
+      const TaggedValue &val = globals_by_id[i];
       if (val.kind == TaggedValue::Kind::HeapPtr && val.ptr)
         roots.push_back(val.ptr);
     }
@@ -1645,12 +1926,12 @@ private:
     if (idx >= func_ptr->names_.size()) {
       throw RuntimeException("LoadGlobal: name index out of range");
     }
-    const std::string &name = func_ptr->names_[idx];
-    auto global_it = globals.find(name);
-    if (global_it == globals.end()) {
-      throw UninitializedVariableException("Undefined global: " + name);
+    size_t slot = get_global_slot(func_ptr, idx);
+    if (slot >= globals_initialized.size() || !globals_initialized[slot]) {
+      throw UninitializedVariableException("Undefined global at slot " +
+                                           std::to_string(slot));
     }
-    push(frame, global_it->second);
+    push(frame, globals_by_id[slot]);
 
     ++ip;
     if (ip == end) goto function_epilogue;
@@ -1663,8 +1944,12 @@ private:
       throw RuntimeException("StoreGlobal: name index out of range");
     }
     TaggedValue v = pop(frame);
-    const std::string &name = func_ptr->names_[idx];
-    globals[name] = v;
+    size_t slot = get_global_slot(func_ptr, idx);
+    globals_by_id[slot] = v;
+    if (slot >= globals_initialized.size()) {
+      globals_initialized.resize(slot + 1, false);
+    }
+    globals_initialized[slot] = true;
 
     ++ip;
     if (ip == end) goto function_epilogue;
@@ -1739,13 +2024,13 @@ private:
     if (idx >= func_ptr->names_.size()) {
       throw RuntimeException("FieldLoad: name index out of range");
     }
-    const std::string &field = func_ptr->names_[idx];
-    auto field_it = rec->fields.find(field);
-    if (field_it == rec->fields.end()) {
-      push(frame, TaggedValue::none());
-    } else {
-      push(frame, tagged_from_value(field_it->second));
+    size_t slot = get_field_slot(func_ptr, idx);
+    if (slot >= rec->named_fields.size()) {
+      rec->named_fields.resize(slot + 1, nullptr);
     }
+    Value *field_val = rec->named_fields[slot];
+    push(frame,
+         field_val ? tagged_from_value(field_val) : TaggedValue::none());
 
     ++ip;
     if (ip == end) goto function_epilogue;
@@ -1763,9 +2048,13 @@ private:
     if (idx >= func_ptr->names_.size()) {
       throw RuntimeException("FieldStore: name index out of range");
     }
-    const std::string &field = func_ptr->names_[idx];
     Value *boxed = box_tagged(val);
-    rec->fields[field] = boxed;
+    size_t slot = get_field_slot(func_ptr, idx);
+    if (slot >= rec->named_fields.size()) {
+      rec->named_fields.resize(slot + 1, nullptr);
+    }
+    rec->named_fields[slot] = boxed;
+    rec->fields[func_ptr->names_[idx]] = boxed;
     heap.write_barrier(rec, boxed);
 
     ++ip;
@@ -1781,27 +2070,11 @@ private:
       throw IllegalCastException("Expected record");
     auto rec = static_cast<Record *>(rec_val.ptr);
 
-    if (idx_val.kind == TaggedValue::Kind::Integer ||
-        (idx_val.kind == TaggedValue::Kind::HeapPtr &&
-         idx_val.ptr->tag == Value::Type::Integer)) {
-      auto idx = idx_val.kind == TaggedValue::Kind::Integer
-                     ? idx_val.i
-                     : static_cast<Integer *>(idx_val.ptr)->value;
-      std::string key = std::to_string(idx);
-      auto it_idx = rec->fields.find(key);
-      push(frame, it_idx != rec->fields.end()
-                        ? tagged_from_value(it_idx->second)
-                        : TaggedValue::none());
-    } else if (idx_val.kind == TaggedValue::Kind::HeapPtr &&
-               idx_val.ptr->tag == Value::Type::String) {
-      const std::string &key = static_cast<String *>(idx_val.ptr)->value;
-      auto it_idx = rec->fields.find(key);
-      push(frame, it_idx != rec->fields.end()
-                        ? tagged_from_value(it_idx->second)
-                        : TaggedValue::none());
-    } else {
-      throw IllegalCastException("Invalid index type");
+    TaggedValue result = TaggedValue::none();
+    if (!record_try_dense_load(rec, idx_val, result)) {
+      result = record_map_load(rec, idx_val);
     }
+    push(frame, result);
 
     ++ip;
     if (ip == end) goto function_epilogue;
@@ -1817,22 +2090,9 @@ private:
       throw IllegalCastException("Expected record");
     auto rec = static_cast<Record *>(rec_val.ptr);
 
-    Value *boxed = box_tagged(val);
-
-    if (idx_val.kind == TaggedValue::Kind::Integer ||
-        (idx_val.kind == TaggedValue::Kind::HeapPtr &&
-         idx_val.ptr->tag == Value::Type::Integer)) {
-      auto idx = idx_val.kind == TaggedValue::Kind::Integer
-                     ? idx_val.i
-                     : static_cast<Integer *>(idx_val.ptr)->value;
-      rec->fields[std::to_string(idx)] = boxed;
-    } else if (idx_val.kind == TaggedValue::Kind::HeapPtr &&
-               idx_val.ptr->tag == Value::Type::String) {
-      rec->fields[static_cast<String *>(idx_val.ptr)->value] = boxed;
-    } else {
-      throw IllegalCastException("Invalid index type");
+    if (!record_try_dense_store(rec, idx_val, val)) {
+      record_map_store(rec, idx_val, val);
     }
-    heap.write_barrier(rec, boxed);
 
     ++ip;
     if (ip == end) goto function_epilogue;
@@ -2194,7 +2454,11 @@ private:
   function_epilogue:
     call_stack.pop_back();
 
+    bool is_main = call_stack.empty();
     if (!returned_flag) {
+      if (is_main) {
+        return TaggedValue::none();
+      }
       throw RuntimeException("Function must end with a return statement");
     }
 
@@ -2271,6 +2535,10 @@ public:
   }
 
   void run(bytecode::Function *main_func) {
+    // Eagerly translate the entire function tree to the register-based
+    // instruction set so we always execute the faster interpreter.
+    translate_function_tree(main_func);
+
     // Mark first 3 functions as native with their IDs
     if (main_func->functions_.size() >= 3) {
       native_functions[main_func->functions_[0]] = 0; // print

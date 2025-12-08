@@ -331,4 +331,123 @@ private:
     }
 };
 
+inline IROperand cpvalue_to_operand(const CPValue& v) {
+    switch (v.kind) {
+        case CPValue::Kind::ConstInt:    return IROperand(IROperand::CONSTI, *v.int_val);
+        case CPValue::Kind::ConstBool:   return IROperand(IROperand::CONSTB, *v.bool_val ? 1 : 0);
+        case CPValue::Kind::ConstString: return IROperand(IROperand::CONSTS, 0, *v.str_val);
+        case CPValue::Kind::ConstNone:   return IROperand(IROperand::NONE);
+        default:                         return IROperand(IROperand::NONE);
+    }
+}
+
+inline bool is_constant(const CPValue& v) {
+    return v.kind == CPValue::Kind::ConstInt ||
+           v.kind == CPValue::Kind::ConstBool ||
+           v.kind == CPValue::Kind::ConstString ||
+           v.kind == CPValue::Kind::ConstNone;
+}
+
+// Run constant propagation and fold instructions/branches in-place.
+inline void run_constant_folding(mitscript::CFG::FunctionCFG& fn) {
+    ConstantPropagation cp(fn);
+    cp.run();
+    cp.rewrite(); // simplify branches first
+
+    using namespace mitscript::CFG;
+    for (size_t bid = 0; bid < fn.blocks.size(); ++bid) {
+        if (!fn.blocks[bid]) continue;
+        auto& blk = *fn.blocks[bid];
+
+        CPState state = cp.in_state(static_cast<BlockId>(bid));
+
+        auto read = [&](const IROperand& op) -> CPValue {
+            switch (op.kind) {
+                case IROperand::VREG:
+                    if (op.i >= 0 && op.i < (int)state.regs.size()) return state.regs[op.i];
+                    return CPValue::top();
+                case IROperand::CONSTI: return CPValue::cint(op.i);
+                case IROperand::CONSTB: return CPValue::cbool(op.i != 0);
+                case IROperand::CONSTS: return CPValue::cstr(op.s);
+                case IROperand::NONE:   return CPValue::none();
+                default:                return CPValue::top();
+            }
+        };
+
+        for (auto& ir : blk.code) {
+            auto set_dst = [&](const CPValue& v) {
+                if (ir.output && ir.output->kind == IROperand::VREG &&
+                    ir.output->i >= 0 && ir.output->i < (int)state.regs.size()) {
+                    state.regs[ir.output->i] = v;
+                }
+            };
+
+            switch (ir.op) {
+                case IROp::LoadConst: {
+                    if (ir.output && !ir.inputs.empty()) {
+                        set_dst(read(ir.inputs[0]));
+                    }
+                    break;
+                }
+
+                case IROp::Add: case IROp::Sub: case IROp::Mul: case IROp::Div:
+                case IROp::CmpEq: case IROp::CmpLt: case IROp::CmpGt:
+                case IROp::CmpLe: case IROp::CmpGe: case IROp::And: case IROp::Or: {
+                    if (ir.output && ir.output->kind == IROperand::VREG && ir.inputs.size() == 2) {
+                        CPValue a = read(ir.inputs[0]);
+                        CPValue b = read(ir.inputs[1]);
+                        CPValue res = eval_binary(ir.op, a, b);
+                        if (is_constant(res)) {
+                            ir.op = IROp::LoadConst;
+                            ir.inputs.clear();
+                            ir.inputs.push_back(cpvalue_to_operand(res));
+                        }
+                        set_dst(res);
+                    } else {
+                        set_dst(CPValue::top());
+                    }
+                    break;
+                }
+
+                case IROp::Neg:
+                case IROp::Not: {
+                    if (ir.output && ir.output->kind == IROperand::VREG && ir.inputs.size() == 1) {
+                        CPValue a = read(ir.inputs[0]);
+                        CPValue res = eval_unary(ir.op, a);
+                        if (is_constant(res)) {
+                            ir.op = IROp::LoadConst;
+                            ir.inputs.clear();
+                            ir.inputs.push_back(cpvalue_to_operand(res));
+                        }
+                        set_dst(res);
+                    } else {
+                        set_dst(CPValue::top());
+                    }
+                    break;
+                }
+
+                case IROp::LoadLocal:
+                case IROp::LoadGlobal:
+                case IROp::Call:
+                case IROp::LoadField:
+                case IROp::LoadIndex:
+                case IROp::MakeRecord:
+                case IROp::AllocClosure: {
+                    if (ir.output && ir.output->kind == IROperand::VREG) {
+                        set_dst(CPValue::top());
+                    }
+                    break;
+                }
+
+                default: {
+                    if (ir.output && ir.output->kind == IROperand::VREG) {
+                        set_dst(CPValue::top());
+                    }
+                    break;
+                }
+            }
+        }
+    }
+}
+
 } // namespace mitscript::analysis

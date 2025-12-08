@@ -87,6 +87,7 @@ namespace mitscript::CFG
     };
 
     struct FunctionCFG {
+        std::string name;
         std::vector<std::string> params;
         std::vector<std::string> locals;
         std::vector<std::string> freeVars;

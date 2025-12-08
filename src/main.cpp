@@ -8,10 +8,13 @@
 #include "mitscript-compiler/converter.hpp"
 #include "mitscript-compiler/cfg-prettyprinter.hpp"
 #include "mitscript-compiler/constant-propagation.hpp"
+#include "mitscript-compiler/inliner.hpp"
+#include "mitscript-compiler/shape_analysis.hpp"
 #include "mitscript-interpreter/lexer.hpp"
 #include "mitscript-interpreter/parser.hpp"
 #include "vm/interpreter.hpp"
 #include "bytecode/opt_inline.hpp"
+#include "mitscript-compiler/dce.hpp"
 #include <iostream>
 #include <algorithm>
 
@@ -26,6 +29,14 @@ static bool has_opt(const Command &cmd, const std::string &name) {
   };
   // "all" enables every optimization.
   return present(name) || present("all");
+}
+
+static void run_shape_analysis_recursive(mitscript::CFG::FunctionCFG &fn) {
+  // Run intraprocedural shape analysis per function; results are available for later passes.
+  (void)mitscript::analysis::run_shape_analysis(fn);
+  for (auto &child : fn.children) {
+    if (child) run_shape_analysis_recursive(*child);
+  }
 }
 
 static std::string token_kind_name(const mitscript::Token &t) {
@@ -133,14 +144,33 @@ int main(int argc, char **argv) {
       auto ast = parser.parse();
 
       mitscript::CFG::FunctionCFG cfg;
+      cfg.name = "module";
       CFGBuilder cfg_builder(cfg, /*moduleScope=*/true);
       ast->accept(&cfg_builder);
 
       // Optional optimization: constant propagation / folding.
-      if (has_opt(command, "constprop")) {
-        mitscript::analysis::ConstantPropagation cp(cfg);
-        cp.run();
-        cp.rewrite();
+      if (has_opt(command, "constprop") || has_opt(command, "all")) {
+        mitscript::analysis::run_constant_folding(cfg);
+      }
+
+      if (has_opt(command, "dce") || has_opt(command, "all")) {
+        mitscript::analysis::run_dce_on_function(cfg);
+      }
+
+      if (has_opt(command, "inline") || has_opt(command, "inlining") || has_opt(command, "all")) {
+        mitscript::analysis::InlineConfig icfg;
+        mitscript::analysis::run_inlining_pass(cfg, icfg);
+      }
+
+      if (has_opt(command, "shape") || has_opt(command, "shapeanalysis") || has_opt(command, "all")) {
+        run_shape_analysis_recursive(cfg);
+      }
+
+      auto has_printcfg = [&]() {
+        return std::find(command.opt.begin(), command.opt.end(), "printcfg") != command.opt.end();
+      };
+      if (has_printcfg()) {
+        mitscript::CFG::prettyprint(cfg, *command.output_stream);
       }
 
       BytecodeConverter bc;
@@ -175,16 +205,35 @@ int main(int argc, char **argv) {
       auto ast = parser.parse();
 
       mitscript::CFG::FunctionCFG cfg;
+      cfg.name = "module";
       CFGBuilder cfg_builder(cfg, /*moduleScope=*/true);
       ast->accept(&cfg_builder);
 
       // Optional optimization: constant propagation / folding.
-      // if (has_opt(command, "constprop") || has_opt(command, "all")) {
-      // // if (true) {
-      //   mitscript::analysis::ConstantPropagation cp(cfg);
-      //   cp.run();
-      //   cp.rewrite();
-      // }
+      if (has_opt(command, "constprop") || has_opt(command, "all")) {
+        mitscript::analysis::run_constant_folding(cfg);
+      }
+
+      if (has_opt(command, "dce") || has_opt(command, "all")) {
+        mitscript::analysis::run_dce_on_function(cfg);
+      }
+
+      if (has_opt(command, "inline") || has_opt(command, "inlining") || has_opt(command, "all")) {
+        mitscript::analysis::InlineConfig icfg;
+        mitscript::analysis::run_inlining_pass(cfg, icfg);
+      }
+
+      if (has_opt(command, "shape") || has_opt(command, "shapeanalysis") || has_opt(command, "all")) {
+        run_shape_analysis_recursive(cfg);
+      }
+
+      // Optional: print CFG before lowering to bytecode
+      auto has_printcfg = [&]() {
+        return std::find(command.opt.begin(), command.opt.end(), "printcfg") != command.opt.end();
+      };
+      if (has_printcfg()) {
+        mitscript::CFG::prettyprint(cfg, *command.output_stream);
+      }
 
       BytecodeConverter bc;
       bytecode::Function *bytecode = bc.convert(cfg, /*is_toplevel=*/true);

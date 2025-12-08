@@ -1,36 +1,36 @@
 
 #pragma once
-#include <type_traits>
-#include <vector>
-#include <utility>
-#include <cstddef>
-#include <tuple>
-#include <cstdint>
 #include "lrucache.hpp"
+#include <cstddef>
+#include <cstdint>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 class CollectedHeap;
 
 // Any object that inherits from collectable can be created and tracked by the
 // garbage collector.
 class Collectable {
- public:
+public:
   virtual ~Collectable() = default;
 
- private:
+private:
   // Any private fields you add to the Collectable class will be accessible by
   // the CollectedHeap (since it is declared as friend below).  You can think of
   // these fields as the header for the object, which will include metadata that
   // is useful for the garbage collector.
   bool marked_ = false;
-  Collectable* next_ = nullptr;
-  Collectable* prev_ = nullptr;
+  Collectable *next_ = nullptr;
+  Collectable *prev_ = nullptr;
   std::size_t size_ = 0;
 
   // Simple generational metadata
-  uint8_t generation_ = 0;      // 0 = young, 1 = old (expandable)
-  bool in_remembered_ = false;  // tracked in remembered set when old → young
+  uint8_t generation_ = 0;     // 0 = young, 1 = old (expandable)
+  bool in_remembered_ = false; // tracked in remembered set when old → young
 
- protected:
+protected:
   /*
   The mark phase of the garbage collector needs to follow all pointers from the
   collectable objects, check if those objects have been marked, and if they
@@ -40,11 +40,10 @@ class Collectable {
   points to.  markSuccessors() is the one responsible for checking if the
   object is marked and marking it.
   */
-  virtual void follow(CollectedHeap& heap) = 0;
+  virtual void follow(CollectedHeap &heap) = 0;
 
   friend class CollectedHeap;
 };
-
 
 /*
   This class keeps track of the garbage collected heap. The class must:
@@ -55,12 +54,13 @@ class Collectable {
     objects that are not reachable from a given set of objects
 */
 class CollectedHeap {
- public:
+public:
   CollectedHeap() = default;
-  mitscript::LRUCache<int>* allocation_cache = new mitscript::LRUCache<int>(1000);
+  mitscript::LRUCache<int> *allocation_cache =
+      new mitscript::LRUCache<int>(1000);
 
   // Remembered set for old objects that may point to young ones
-  std::vector<Collectable*> remembered_;
+  std::vector<Collectable *> remembered_;
 
   // Simple heuristics to decide between minor and full collection
   std::size_t young_bytes_ = 0;
@@ -73,17 +73,19 @@ class CollectedHeap {
   static constexpr std::size_t kFullThresholdBytes = 8 * 1024 * 1024;
   static constexpr std::size_t kMaxMinorBeforeFull = 6;
 
-  bool is_young(Collectable* obj) const { return obj && obj->generation_ == 0; }
-  bool is_old(Collectable* obj) const { return obj && obj->generation_ > 0; }
+  bool is_young(Collectable *obj) const { return obj && obj->generation_ == 0; }
+  bool is_old(Collectable *obj) const { return obj && obj->generation_ > 0; }
 
-  void remember(Collectable* obj) {
-    if (!obj || obj->in_remembered_ || !is_old(obj)) return;
+  void remember(Collectable *obj) {
+    if (!obj || obj->in_remembered_ || !is_old(obj))
+      return;
     remembered_.push_back(obj);
     obj->in_remembered_ = true;
   }
 
-  void write_barrier(Collectable* owner, Collectable* child) {
-    if (!owner || !child) return;
+  void write_barrier(Collectable *owner, Collectable *child) {
+    if (!owner || !child)
+      return;
     if (is_old(owner) && is_young(child)) {
       remember(owner);
     }
@@ -92,14 +94,16 @@ class CollectedHeap {
   T must be a subclass of Collectable.  Before returning the
   object, it should be registered so that it can be deallocated later.
   */
-  template <typename T, typename... Args>
-  T* allocate(Args&&... args) {
-    static_assert(std::is_base_of_v<Collectable, T>, "T must derive from Collectable");
-    static_assert(std::is_constructible_v<T, Args...>, "T must be constructible with Args...");
+  template <typename T, typename... Args> T *allocate(Args &&...args) {
+    static_assert(std::is_base_of_v<Collectable, T>,
+                  "T must derive from Collectable");
+    static_assert(std::is_constructible_v<T, Args...>,
+                  "T must be constructible with Args...");
 
     // if constexpr (sizeof...(Args) == 1) {
-    //   using First = std::decay_t<std::tuple_element_t<0, std::tuple<Args...>>>;
-    //   if constexpr (std::is_same_v<First, int> && std::is_convertible_v<T*, mitscript::Value*>) {
+    //   using First = std::decay_t<std::tuple_element_t<0,
+    //   std::tuple<Args...>>>; if constexpr (std::is_same_v<First, int> &&
+    //   std::is_convertible_v<T*, mitscript::Value*>) {
     //     auto tup = std::forward_as_tuple(std::forward<Args>(args)...);
     //     int key = std::get<0>(tup);
     //     if (auto* cached = allocation_cache->get(key)) {
@@ -118,12 +122,13 @@ class CollectedHeap {
     //   }
     // }
 
-    T* obj = new T(std::forward<Args>(args)...);
+    T *obj = new T(std::forward<Args>(args)...);
 
     // Inserting at head
     obj->next_ = head_;
     obj->prev_ = nullptr;
-    if (head_) head_->prev_ = obj;
+    if (head_)
+      head_->prev_ = obj;
     head_ = obj;
     obj->size_ = sizeof(T);
     obj->generation_ = 0;
@@ -139,14 +144,14 @@ class CollectedHeap {
   object.  This is how a Collectable object lets the garbage collector know
   about other Collectable objects pointed to by itself.
   */
-  void markSuccessors(Collectable* next) {
-    if (!next) return;
+  void markSuccessors(Collectable *next) {
+    if (!next)
+      return;
 
-
-    if (next->marked_) return;
+    if (next->marked_)
+      return;
     next->marked_ = true;
     next->follow(*this);
-
   }
 
   /*
@@ -154,8 +159,7 @@ class CollectedHeap {
   in CollectedHeap) whenever the VM decides it is time to reclaim memory.  This
   method triggers the mark and sweep process over the provided root set.
   */
-  template <typename Iterator>
-  void gc(Iterator begin, Iterator end) {
+  template <typename Iterator> void gc(Iterator begin, Iterator end) {
     bool force_full = allocated_bytes_ >= kFullThresholdBytes ||
                       promoted_bytes_since_full_ >= kPromotionFullThreshold ||
                       minor_since_full_ >= kMaxMinorBeforeFull;
@@ -179,9 +183,8 @@ class CollectedHeap {
     }
   }
 
-  template <typename Iterator>
-  void minor_gc(Iterator begin, Iterator end) {
-    std::vector<Collectable*> new_remembered;
+  template <typename Iterator> void minor_gc(Iterator begin, Iterator end) {
+    std::vector<Collectable *> new_remembered;
     new_remembered.reserve(remembered_.size());
 
     for (auto it = begin; it != end; ++it) {
@@ -190,23 +193,28 @@ class CollectedHeap {
 
     // Remembered old objects are treated as roots to preserve young
     // successors without forcing a full-heap traversal.
-    for (Collectable* obj : remembered_) {
+    for (Collectable *obj : remembered_) {
       if (obj) {
         markSuccessors(obj);
       }
     }
 
-    Collectable* cur = head_;
+    Collectable *cur = head_;
     while (cur) {
-      Collectable* next = cur->next_;
+      Collectable *next = cur->next_;
       if (!cur->marked_) {
         if (is_young(cur)) {
-          if (cur->prev_) cur->prev_->next_ = next;
-          else head_ = next;
+          if (cur->prev_)
+            cur->prev_->next_ = next;
+          else
+            head_ = next;
 
-          if (next) next->prev_ = cur->prev_;
+          if (next)
+            next->prev_ = cur->prev_;
 
-          while (allocation_cache->removeValue(reinterpret_cast<mitscript::Value*>(cur))) {}
+          while (allocation_cache->removeValue(
+              reinterpret_cast<mitscript::Value *>(cur))) {
+          }
           allocated_bytes_ -= cur->size_;
           objects_allocated_ -= 1;
           young_bytes_ -= cur->size_;
@@ -229,25 +237,29 @@ class CollectedHeap {
     remembered_.swap(new_remembered);
   }
 
-  template <typename Iterator>
-  void full_gc(Iterator begin, Iterator end) {
+  template <typename Iterator> void full_gc(Iterator begin, Iterator end) {
     for (auto it = begin; it != end; ++it) {
       markSuccessors(*it);
     }
 
-    Collectable* cur = head_;
+    Collectable *cur = head_;
     while (cur) {
-      Collectable* next = cur->next_;
+      Collectable *next = cur->next_;
       if (!cur->marked_) {
 
-        if (cur->prev_) cur->prev_->next_ = next;
+        if (cur->prev_)
+          cur->prev_->next_ = next;
 
-        else head_ = next;
+        else
+          head_ = next;
 
-        if (next) next->prev_ = cur->prev_;
+        if (next)
+          next->prev_ = cur->prev_;
 
         // Purge any cache entries that point to this object (compare addresses)
-        while (allocation_cache->removeValue(reinterpret_cast<mitscript::Value*>(cur))) {}
+        while (allocation_cache->removeValue(
+            reinterpret_cast<mitscript::Value *>(cur))) {
+        }
         allocated_bytes_ -= cur->size_;
         objects_allocated_ -= 1;
         delete cur;
@@ -265,8 +277,8 @@ class CollectedHeap {
     minor_since_full_ = 0;
   }
 
- private:
-  Collectable* head_ = nullptr;
+private:
+  Collectable *head_ = nullptr;
   std::size_t allocated_bytes_ = 0;
   std::size_t objects_allocated_ = 0;
 };
