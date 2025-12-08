@@ -37,10 +37,6 @@ private:
 
   int32_t safe_cast(int64_t value);
   uint32_t safe_unsigned_cast(int64_t value);
-
-  // Fast integer parsing - avoids std::stoi overhead
-  static int32_t fast_parse_int(const std::string &str);
-  static uint32_t fast_parse_uint(const std::string &str);
 };
 
 Function *parse(const std::string &contents);

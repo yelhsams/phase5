@@ -9,5 +9,4 @@ mkdir -p build/cmake
 cd build/cmake
 cmake ../..
 
-cmake --build . --parallel --config Release
-cmake --build . --parallel --config Debug
+cmake --build . --config Release

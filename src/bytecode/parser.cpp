@@ -3,6 +3,7 @@
 #include "./lexer.hpp"
 #include "./types.hpp"
 #include <cassert>
+#include <iostream>
 #include <optional>
 #include <stdexcept>
 
@@ -21,28 +22,32 @@ bytecode::Function *bytecode::Parser::parse() {
 
   if (!is_eof()) {
     const auto &current = peek();
-    throw std::runtime_error(
-        "Unexpected tokens after function definition at line " +
-        std::to_string(current.start_line) + ", column " +
-        std::to_string(current.start_col));
+    throw std::runtime_error("Unexpected tokens after function definition at line " +
+                             std::to_string(current.start_line) + ", column " +
+                             std::to_string(current.start_col));
   }
 
   return function;
 }
 
 bool bytecode::Parser::is_eof() const {
+<<<<<<< HEAD
   return pos >= tokens.size() ||
          (pos < tokens.size() && tokens[pos].kind == TokenKind::EOF_TOKEN);
+=======
+  return pos >= tokens.size() || peek().kind == TokenKind::EOF_TOKEN;
+>>>>>>> 856fa62 (shaunak changes)
 }
 
 bool bytecode::Parser::check(TokenKind kind) const {
-  return pos < tokens.size() && tokens[pos].kind == kind;
+  if (is_eof())
+    return false;
+  return peek().kind == kind;
 }
 
 const bytecode::Token &bytecode::Parser::peek() const {
   if (pos >= tokens.size()) {
-    static const bytecode::Token eof_token(TokenKind::EOF_TOKEN, "", 0, 0, 0,
-                                           0);
+    static bytecode::Token eof_token(TokenKind::EOF_TOKEN, "", 0, 0, 0, 0);
     return eof_token;
   }
   return tokens[pos];
@@ -53,18 +58,15 @@ const bytecode::Token &bytecode::Parser::previous() const {
 }
 
 bytecode::Token bytecode::Parser::advance() {
-  if (pos < tokens.size())
+  if (!is_eof())
     pos++;
   return previous();
 }
 
 bool bytecode::Parser::match(std::initializer_list<TokenKind> kinds) {
-  if (pos >= tokens.size())
-    return false;
-  const TokenKind current_kind = tokens[pos].kind;
   for (TokenKind kind : kinds) {
-    if (current_kind == kind) {
-      pos++;
+    if (check(kind)) {
+      advance();
       return true;
     }
   }
@@ -77,9 +79,10 @@ bytecode::Token bytecode::Parser::consume(TokenKind kind,
     return advance();
 
   const bytecode::Token &current = peek();
-  throw std::runtime_error(
-      message + " at line " + std::to_string(current.start_line) + ", column " +
-      std::to_string(current.start_col) + " (token: '" + current.text + "')");
+  throw std::runtime_error(message + " at line " +
+                           std::to_string(current.start_line) + ", column " +
+                           std::to_string(current.start_col) + " (token: '" +
+                           current.text + "')");
 }
 
 bytecode::Function *bytecode::Parser::parse_function() {
@@ -104,7 +107,7 @@ bytecode::Function *bytecode::Parser::parse_function() {
   consume(TokenKind::ASSIGN, "Expected '=' after 'parameter_count'");
   auto param_count_token =
       consume(TokenKind::INT, "Expected integer for parameter count");
-  uint32_t param_count = fast_parse_uint(param_count_token.text);
+  uint32_t param_count = safe_unsigned_cast(std::stoi(param_count_token.text));
   consume(TokenKind::COMMA, "Expected ',' after parameter count");
 
   consume(TokenKind::LOCAL_VARS, "Expected 'local_vars' keyword");
@@ -146,14 +149,14 @@ bytecode::Function *bytecode::Parser::parse_function() {
   consume(TokenKind::RBRACE, "Expected '}' to end function");
 
   auto function = new bytecode::Function();
-  function->functions_ = std::move(*functions);
-  function->constants_ = std::move(*constants);
+  function->functions_ = *functions;
+  function->constants_ = *constants;
   function->parameter_count_ = param_count;
-  function->local_vars_ = std::move(*local_vars);
-  function->local_reference_vars_ = std::move(*local_ref_vars);
-  function->free_vars_ = std::move(*free_vars);
-  function->names_ = std::move(*names);
-  function->instructions = std::move(*instructions);
+  function->local_vars_ = *local_vars;
+  function->local_reference_vars_ = *local_ref_vars;
+  function->free_vars_ = *free_vars;
+  function->names_ = *names;
+  function->instructions = *instructions;
 
   delete functions;
   delete constants;
@@ -177,7 +180,6 @@ bytecode::Parser::parse_function_list_star() {
 std::vector<bytecode::Function *> *
 bytecode::Parser::parse_function_list_plus() {
   auto list = new std::vector<bytecode::Function *>();
-  list->reserve(4); // Common case: small number of nested functions
 
   if (check(TokenKind::FUNCTION)) {
     auto func = parse_function();
@@ -203,34 +205,35 @@ std::vector<std::string> *bytecode::Parser::parse_ident_list_star() {
 
 std::vector<std::string> *bytecode::Parser::parse_ident_list_plus() {
   auto list = new std::vector<std::string>();
-  list->reserve(8); // Common case: small number of identifiers
 
-  // Optimized identifier check - check common non-identifier tokens first
   auto is_identifier_like = [](TokenKind kind) {
-    // Fast path: check common non-identifier tokens first (most common case)
-    if (kind == TokenKind::LBRACE || kind == TokenKind::RBRACE ||
-        kind == TokenKind::LBRACKET || kind == TokenKind::RBRACKET ||
-        kind == TokenKind::LPAREN || kind == TokenKind::RPAREN ||
-        kind == TokenKind::COMMA || kind == TokenKind::ASSIGN ||
-        kind == TokenKind::EOF_TOKEN || kind == TokenKind::INT ||
-        kind == TokenKind::STRING) {
+    switch (kind) {
+    case TokenKind::LBRACE:
+    case TokenKind::RBRACE:
+    case TokenKind::LBRACKET:
+    case TokenKind::RBRACKET:
+    case TokenKind::LPAREN:
+    case TokenKind::RPAREN:
+    case TokenKind::COMMA:
+    case TokenKind::ASSIGN:
+    case TokenKind::EOF_TOKEN:
+    case TokenKind::INT:
+    case TokenKind::STRING:
       return false;
+    default:
+      return true; // keywords and instruction mnemonics count as identifiers here
     }
-    return true; // keywords and instruction mnemonics count as identifiers here
   };
 
   auto consume_ident_like = [&](const std::string &message) -> std::string {
-    if (pos >= tokens.size()) {
-      throw std::runtime_error(message + " (unexpected EOF)");
-    }
-    const auto &current = tokens[pos];
+    const auto &current = peek();
     if (!is_identifier_like(current.kind)) {
-      throw std::runtime_error(message + " at line " +
-                               std::to_string(current.start_line) +
-                               ", column " + std::to_string(current.start_col) +
-                               " (token: '" + current.text + "')");
+      throw std::runtime_error(
+          message + " at line " + std::to_string(current.start_line) +
+          ", column " + std::to_string(current.start_col) + " (token: '" +
+          current.text + "')");
     }
-    return tokens[pos++].text;
+    return advance().text;
   };
 
   list->push_back(consume_ident_like("Expected identifier"));
@@ -256,7 +259,8 @@ bytecode::Constant *bytecode::Parser::parse_constant() {
     return new bytecode::Constant::String(str_token.text);
   } else if (check(TokenKind::INT)) {
     auto int_token = consume(TokenKind::INT, "Expected integer constant");
-    return new bytecode::Constant::Integer(fast_parse_int(int_token.text));
+    return new bytecode::Constant::Integer(
+        safe_cast(std::stoi(int_token.text)));
   } else {
     const auto &current = peek();
     throw std::runtime_error("Expected constant at line " +
@@ -276,7 +280,6 @@ bytecode::Parser::parse_constant_list_star() {
 std::vector<bytecode::Constant *> *
 bytecode::Parser::parse_constant_list_plus() {
   auto list = new std::vector<bytecode::Constant *>();
-  list->reserve(8); // Common case: small number of constants
 
   auto constant = parse_constant();
   list->push_back(constant);
@@ -296,37 +299,37 @@ bytecode::Instruction bytecode::Parser::parse_instruction() {
     auto operand =
         consume(TokenKind::INT, "Expected integer operand for load_const");
     return bytecode::Instruction(bytecode::Operation::LoadConst,
-                                 fast_parse_int(operand.text));
+                                 safe_cast(std::stoi(operand.text)));
   } else if (match({TokenKind::LOAD_FUNC})) {
     auto operand =
         consume(TokenKind::INT, "Expected integer operand for load_func");
     return bytecode::Instruction(bytecode::Operation::LoadFunc,
-                                 fast_parse_int(operand.text));
+                                 safe_cast(std::stoi(operand.text)));
   } else if (match({TokenKind::LOAD_LOCAL})) {
     auto operand =
         consume(TokenKind::INT, "Expected integer operand for load_local");
     return bytecode::Instruction(bytecode::Operation::LoadLocal,
-                                 fast_parse_int(operand.text));
+                                 safe_cast(std::stoi(operand.text)));
   } else if (match({TokenKind::STORE_LOCAL})) {
     auto operand =
         consume(TokenKind::INT, "Expected integer operand for store_local");
     return bytecode::Instruction(bytecode::Operation::StoreLocal,
-                                 fast_parse_int(operand.text));
+                                 safe_cast(std::stoi(operand.text)));
   } else if (match({TokenKind::LOAD_GLOBAL})) {
     auto operand =
         consume(TokenKind::INT, "Expected integer operand for load_global");
     return bytecode::Instruction(bytecode::Operation::LoadGlobal,
-                                 fast_parse_int(operand.text));
+                                 safe_cast(std::stoi(operand.text)));
   } else if (match({TokenKind::STORE_GLOBAL})) {
     auto operand =
         consume(TokenKind::INT, "Expected integer operand for store_global");
     return bytecode::Instruction(bytecode::Operation::StoreGlobal,
-                                 fast_parse_int(operand.text));
+                                 safe_cast(std::stoi(operand.text)));
   } else if (match({TokenKind::PUSH_REF})) {
     auto operand =
         consume(TokenKind::INT, "Expected integer operand for push_ref");
     return bytecode::Instruction(bytecode::Operation::PushReference,
-                                 fast_parse_int(operand.text));
+                                 safe_cast(std::stoi(operand.text)));
   } else if (match({TokenKind::LOAD_REF})) {
     return bytecode::Instruction(bytecode::Operation::LoadReference,
                                  std::nullopt);
@@ -340,12 +343,12 @@ bytecode::Instruction bytecode::Parser::parse_instruction() {
     auto operand =
         consume(TokenKind::INT, "Expected integer operand for field_load");
     return bytecode::Instruction(bytecode::Operation::FieldLoad,
-                                 fast_parse_int(operand.text));
+                                 safe_cast(std::stoi(operand.text)));
   } else if (match({TokenKind::FIELD_STORE})) {
     auto operand =
         consume(TokenKind::INT, "Expected integer operand for field_store");
     return bytecode::Instruction(bytecode::Operation::FieldStore,
-                                 fast_parse_int(operand.text));
+                                 safe_cast(std::stoi(operand.text)));
   } else if (match({TokenKind::INDEX_LOAD})) {
     return bytecode::Instruction(bytecode::Operation::IndexLoad, std::nullopt);
   } else if (match({TokenKind::INDEX_STORE})) {
@@ -354,11 +357,11 @@ bytecode::Instruction bytecode::Parser::parse_instruction() {
     auto operand =
         consume(TokenKind::INT, "Expected integer operand for alloc_closure");
     return bytecode::Instruction(bytecode::Operation::AllocClosure,
-                                 fast_parse_int(operand.text));
+                                 safe_cast(std::stoi(operand.text)));
   } else if (match({TokenKind::CALL})) {
     auto operand = consume(TokenKind::INT, "Expected integer operand for call");
     return bytecode::Instruction(bytecode::Operation::Call,
-                                 fast_parse_int(operand.text));
+                                 safe_cast(std::stoi(operand.text)));
   } else if (match({TokenKind::RETURN})) {
     return bytecode::Instruction(bytecode::Operation::Return, std::nullopt);
   } else if (match({TokenKind::ADD})) {
@@ -386,11 +389,11 @@ bytecode::Instruction bytecode::Parser::parse_instruction() {
   } else if (match({TokenKind::GOTO})) {
     auto operand = consume(TokenKind::INT, "Expected integer operand for goto");
     return bytecode::Instruction(bytecode::Operation::Goto,
-                                 fast_parse_int(operand.text));
+                                 safe_cast(std::stoi(operand.text)));
   } else if (match({TokenKind::IF})) {
     auto operand = consume(TokenKind::INT, "Expected integer operand for if");
     return bytecode::Instruction(bytecode::Operation::If,
-                                 fast_parse_int(operand.text));
+                                 safe_cast(std::stoi(operand.text)));
   } else if (match({TokenKind::DUP})) {
     return bytecode::Instruction(bytecode::Operation::Dup, std::nullopt);
   } else if (match({TokenKind::SWAP})) {
@@ -400,16 +403,15 @@ bytecode::Instruction bytecode::Parser::parse_instruction() {
   } else {
     const auto &current = peek();
     throw std::runtime_error("Expected instruction at line " +
-                             std::to_string(current.start_line) + ", column " +
-                             std::to_string(current.start_col));
+                             std::to_string(current.start_line) +
+                             ", column " + std::to_string(current.start_col));
   }
 }
 
 std::vector<bytecode::Instruction> *bytecode::Parser::parse_instruction_list() {
   auto list = new std::vector<bytecode::Instruction>();
-  list->reserve(32); // Common case: reasonable number of instructions
 
-  while (pos < tokens.size() && tokens[pos].kind != TokenKind::RBRACKET) {
+  while (!check(TokenKind::RBRACKET) && !is_eof()) {
     auto instruction = parse_instruction();
     list->push_back(instruction);
   }
@@ -427,31 +429,6 @@ uint32_t bytecode::Parser::safe_unsigned_cast(int64_t value) {
   uint32_t new_value = static_cast<uint32_t>(value);
   assert(new_value == value);
   return new_value;
-}
-
-int32_t bytecode::Parser::fast_parse_int(const std::string &str) {
-  const char *p = str.c_str();
-  bool negative = false;
-  if (*p == '-') {
-    negative = true;
-    ++p;
-  }
-  int32_t result = 0;
-  while (*p >= '0' && *p <= '9') {
-    result = result * 10 + (*p - '0');
-    ++p;
-  }
-  return negative ? -result : result;
-}
-
-uint32_t bytecode::Parser::fast_parse_uint(const std::string &str) {
-  const char *p = str.c_str();
-  uint32_t result = 0;
-  while (*p >= '0' && *p <= '9') {
-    result = result * 10 + (*p - '0');
-    ++p;
-  }
-  return result;
 }
 
 bytecode::Function *bytecode::parse(const std::string &contents) {
