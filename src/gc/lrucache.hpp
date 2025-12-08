@@ -8,47 +8,50 @@
 
 namespace mitscript {
 
+// Forward declare to avoid including interpreter implementation
+class Value;
+
 // Restrict allowed key types for LRUCache
 template <class T> struct is_cacheable : std::false_type {};
 template <> struct is_cacheable<int> : std::true_type {};
 template <> struct is_cacheable<std::string> : std::true_type {};
 
-template <class T, class V>
+template <class T>
 struct ListNode {
-        T key;
-        V* value;
-        ListNode<T, V>* prev;
-        ListNode<T, V>* next;
-        ListNode(const T& k, V* v) : key(k), value(v), prev(nullptr), next(nullptr) {}
+	T key;
+	Value* value;
+	ListNode<T>* prev;
+	ListNode<T>* next;
+	ListNode(const T& k, Value* v) : key(k), value(v), prev(nullptr), next(nullptr) {}
 };
 
-template <class T, class V>
+template <class T>
 class LRUCache {
-        static_assert(is_cacheable<T>::value, "Type not allowed for LRUCache");
+	static_assert(is_cacheable<T>::value, "Type not allowed for LRUCache");
 
  public:
-        explicit LRUCache(std::size_t capacity) : capacity_(capacity) {}
+	explicit LRUCache(std::size_t capacity) : capacity_(capacity) {}
 
-        V* get(const T& key) {
-                auto it = map_.find(key);
-                if (it == map_.end()) return nullptr;
-                moveToHead(it->second);
-                return it->second->value;
-        }
+	Value* get(const T& key) {
+		auto it = map_.find(key);
+		if (it == map_.end()) return nullptr;
+		moveToHead(it->second);
+		return it->second->value;
+	}
 
-        void insert(const T& key, V* value) {
-                auto it = map_.find(key);
-                if (it != map_.end()) {
-                        it->second->value = value;
-                        moveToHead(it->second);
-                        return;
-                }
-                auto* node = new ListNode<T, V>(key, value);
-                // Insert at head as MRU
-                node->next = head_;
-                node->prev = nullptr;
-                if (head_) head_->prev = node;
-                head_ = node;
+	void insert(const T& key, Value* value) {
+		auto it = map_.find(key);
+		if (it != map_.end()) {
+			it->second->value = value;
+			moveToHead(it->second);
+			return;
+		}
+		auto* node = new ListNode<T>(key, value);
+		// Insert at head as MRU
+		node->next = head_;
+		node->prev = nullptr;
+		if (head_) head_->prev = node;
+		head_ = node;
 		if (!tail_) tail_ = node;
 		map_[key] = node;
 
@@ -56,11 +59,11 @@ class LRUCache {
 	}
 
 	~LRUCache() {
-                auto* p = head_;
-                while (p) {
-                        auto* nxt = p->next;
-                        delete p;
-                        p = nxt;
+		auto* p = head_;
+		while (p) {
+			auto* nxt = p->next;
+			delete p;
+			p = nxt;
 		}
 	}
 
@@ -86,28 +89,28 @@ class LRUCache {
 
 
  private:
-        std::size_t capacity_;
-        std::unordered_map<T, ListNode<T, V>*> map_;
-        ListNode<T, V>* head_ = nullptr;
-        ListNode<T, V>* tail_ = nullptr;
+	std::size_t capacity_;
+	std::unordered_map<T, ListNode<T>*> map_;
+	ListNode<T>* head_ = nullptr;
+	ListNode<T>* tail_ = nullptr;
 
-        void moveToHead(ListNode<T, V>* node) {
-                if (node == head_) return;
-                // unlink
-                if (node->prev) node->prev->next = node->next;
-                if (node->next) node->next->prev = node->prev;
-                if (node == tail_) tail_ = node->prev;
+	void moveToHead(ListNode<T>* node) {
+		if (node == head_) return;
+		// unlink
+		if (node->prev) node->prev->next = node->next;
+		if (node->next) node->next->prev = node->prev;
+		if (node == tail_) tail_ = node->prev;
 		// push front
 		node->prev = nullptr;
 		node->next = head_;
 		if (head_) head_->prev = node;
 		head_ = node;
 		if (!tail_) tail_ = node;
-        }
+	}
 
-        void evictLRU() {
-                if (!tail_) return;
-                auto* victim = tail_;
+	void evictLRU() {
+		if (!tail_) return;
+		auto* victim = tail_;
 		// unlink tail
 		tail_ = victim->prev;
 		if (tail_) tail_->next = nullptr; else head_ = nullptr;
