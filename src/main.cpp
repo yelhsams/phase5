@@ -189,7 +189,7 @@ int main(int argc, char **argv) {
       BytecodeConverter bc;
       bytecode::Function *bytecode = bc.convert(cfg, /*is_toplevel=*/true);
       // bytecode::opt_inline::inline_functions(bytecode);
-      vm::VM vm(command.mem);
+      vm::VM vm(command.mem, has_opt(command, "jit"));
       vm.run(bytecode);
     } catch (const std::exception &e) {
       had_error = true;
@@ -236,7 +236,7 @@ int main(int argc, char **argv) {
       bytecode::opt_inline::inline_functions(bytecode_func);
 
       // Create VM and execute
-      vm::VM vm(max_mem_mb);
+      vm::VM vm(max_mem_mb, has_opt(command, "jit"));
       vm.run(bytecode_func);
 
       // Cleanup
