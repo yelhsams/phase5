@@ -343,19 +343,6 @@ private:
   Value *bool_true_singleton = nullptr;
   Value *bool_false_singleton = nullptr;
 
-  Value *allocate_integer(int32_t value) {
-    if (heap.allocation_cache) {
-      if (auto *cached = heap.allocation_cache->get(value)) {
-        return static_cast<Value *>(cached);
-      }
-    }
-    auto *created = allocate<Integer>(value);
-    if (heap.allocation_cache) {
-      heap.allocation_cache->insert(value, created);
-    }
-    return created;
-  }
-
   // Wrapper for heap allocation that triggers GC periodically
   template <typename T, typename... Args> T *allocate(Args &&...args) {
     curr_heap_bytes += sizeof(T);
@@ -464,7 +451,7 @@ private:
     case TaggedValue::Kind::Boolean:
       return tv.b ? bool_true_singleton : bool_false_singleton;
     case TaggedValue::Kind::Integer:
-      return allocate_integer(tv.i);
+      return allocate<Integer>(tv.i);
     case TaggedValue::Kind::HeapPtr:
       return tv.ptr;
     }
@@ -1578,7 +1565,7 @@ private:
         auto s = static_cast<String *>(arg.ptr);
         try {
           int32_t val = std::atoi(s->value.c_str());
-          return allocate_integer(val);
+          return allocate<Integer>(val);
         } catch (...) {
           throw IllegalCastException("Cannot cast string to int");
         }
@@ -1609,14 +1596,6 @@ private:
     for (auto &[c, val] : constant_cache) {
       if (val)
         roots.push_back(val);
-    }
-
-    if (heap.allocation_cache) {
-      for (const auto &k : heap.allocation_cache->keys()) {
-        if (auto *cached = heap.allocation_cache->get(k)) {
-          roots.push_back(cached);
-        }
-      }
     }
 
     // Add singletons as roots

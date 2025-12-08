@@ -51,8 +51,8 @@ class Collectable {
 class CollectedHeap {
  public:
   CollectedHeap() = default;
-  mitscript::LRUCache<int, Collectable>* allocation_cache =
-      new mitscript::LRUCache<int, Collectable>(1000);
+  mitscript::LRUCache<int>* allocation_cache =
+      new mitscript::LRUCache<int>(1000);
 
   // Remembered set for old objects that may point to young ones
   std::vector<Collectable*> remembered_;
