@@ -31,12 +31,7 @@ bytecode::Function *bytecode::Parser::parse() {
 }
 
 bool bytecode::Parser::is_eof() const {
-<<<<<<< HEAD
-  return pos >= tokens.size() ||
-         (pos < tokens.size() && tokens[pos].kind == TokenKind::EOF_TOKEN);
-=======
   return pos >= tokens.size() || peek().kind == TokenKind::EOF_TOKEN;
->>>>>>> 856fa62 (shaunak changes)
 }
 
 bool bytecode::Parser::check(TokenKind kind) const {
