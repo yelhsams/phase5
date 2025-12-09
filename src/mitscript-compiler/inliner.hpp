@@ -6,7 +6,7 @@
 namespace mitscript::analysis {
 
 struct InlineConfig {
-    int max_inline_instructions = 40;
+    int max_inline_instructions = 15;
 };
 
 // Run module-level inlining starting from the toplevel function.
