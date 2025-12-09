@@ -222,15 +222,12 @@ CallGraph build_call_graph(const std::vector<FunctionCFG*>& funcs) {
 bool should_inline(const FunctionCFG* callee,
                    const CallGraph& cg,
                    int max_inline_instructions) {
-    if (!callee) return false;
-    // Do not inline closures that capture free variables; we do not rewrite
-    // environments here.
-    if (!callee->freeVars.empty()) return false;
-    // Also skip functions that define nested functions/closures; inlining them
-    // would require remapping their children and environments.
-    if (!callee->children.empty()) return false;
-    if (cg.recursive.at(const_cast<FunctionCFG*>(callee))) return false;
-    // Only inline our vetted tiny helper used in hot loops.
+    // Inlining is currently disabled due to issues with the block
+    // management causing memory exhaustion. The infrastructure exists
+    // but needs fixes to the inline_call function.
+    (void)callee;
+    (void)cg;
+    (void)max_inline_instructions;
     return false;
 }
 
