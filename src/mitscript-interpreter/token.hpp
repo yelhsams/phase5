@@ -54,6 +54,7 @@ enum class TokenKind {
 
 struct Token {
     TokenKind kind;
+    std::string kind_as_string;
     std::string text;
     int start_line;
     int start_col;
@@ -61,6 +62,9 @@ struct Token {
     int end_col;
 
     Token(TokenKind k, std::string text, int sl, int sc, int el, int ec)
-        : kind(k), text(std::move(text)), start_line(sl), start_col(sc), end_line(el), end_col(ec) {}
+        : kind(k), text(std::move(text)), start_line(sl), start_col(sc), end_line(el), end_col(ec) {
+
+}
+
 };
 };
