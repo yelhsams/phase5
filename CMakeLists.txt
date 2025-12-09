@@ -5,6 +5,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(COMMON_CXX_FLAGS -Wall -Wextra -pedantic)
+
+set(CMAKE_CXX_FLAGS_RELEASE "${COMMON_CXX_FLAGS} -O3 -DNDEBUG")
+
+set(CMAKE_CXX_FLAGS_DEBUG "${COMMON_CXX_FLAGS} -g -O0 -DDEBUG -fsanitize=address -fsanitize=undefined")
+set(CMAKE_EXE_LINKER_FLAGS_DEBUG "-fsanitize=address -fsanitize=undefined")
+
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 include_directories(src)
@@ -21,8 +28,8 @@ set_target_properties(mitscript-debug PROPERTIES
     OUTPUT_NAME "mitscript"
 )
 
-target_compile_options(mitscript-release PRIVATE -Wall -Wextra -pedantic -O3 -DNDEBUG)
-target_compile_options(mitscript-debug PRIVATE -Wall -Wextra -pedantic -g -O0 -DDEBUG -fsanitize=address -fsanitize=undefined)
+target_compile_options(mitscript-release PRIVATE ${COMMON_CXX_FLAGS} -O3 -DNDEBUG)
+target_compile_options(mitscript-debug PRIVATE ${COMMON_CXX_FLAGS} -g -O0 -DDEBUG -fsanitize=address -fsanitize=undefined)
 target_link_options(mitscript-debug PRIVATE -fsanitize=address -fsanitize=undefined)
 
 add_custom_command(TARGET mitscript-release POST_BUILD
