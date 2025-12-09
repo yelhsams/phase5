@@ -401,54 +401,6 @@ inline void run_constant_folding(mitscript::CFG::FunctionCFG& fn) {
                             ir.op = IROp::LoadConst;
                             ir.inputs.clear();
                             ir.inputs.push_back(cpvalue_to_operand(res));
-                        } else {
-                            // Strength reduction optimizations
-                            bool a_is_int = a.kind == CPValue::Kind::ConstInt;
-                            bool b_is_int = b.kind == CPValue::Kind::ConstInt;
-
-                            if (ir.op == IROp::Mul) {
-                                // x * 0 = 0, 0 * x = 0
-                                if ((a_is_int && *a.int_val == 0) || (b_is_int && *b.int_val == 0)) {
-                                    ir.op = IROp::LoadConst;
-                                    ir.inputs.clear();
-                                    ir.inputs.push_back(IROperand(IROperand::CONSTI, 0));
-                                }
-                                // x * 1 = x: convert to Add x + 0
-                                else if (b_is_int && *b.int_val == 1) {
-                                    ir.op = IROp::Add;
-                                    ir.inputs[1] = IROperand(IROperand::CONSTI, 0);
-                                }
-                                // 1 * x = x: convert to Add 0 + x
-                                else if (a_is_int && *a.int_val == 1) {
-                                    ir.op = IROp::Add;
-                                    ir.inputs[0] = IROperand(IROperand::CONSTI, 0);
-                                }
-                                // x * 2 = x + x (strength reduction)
-                                else if (b_is_int && *b.int_val == 2) {
-                                    ir.op = IROp::Add;
-                                    ir.inputs[1] = ir.inputs[0]; // x + x
-                                }
-                                // 2 * x = x + x
-                                else if (a_is_int && *a.int_val == 2) {
-                                    ir.op = IROp::Add;
-                                    ir.inputs[0] = ir.inputs[1];
-                                    // ir.inputs[1] already holds x
-                                }
-                            }
-                            else if (ir.op == IROp::Add) {
-                                // x + 0 = x: keep as Add for simplicity, bytecode handles this
-                                // 0 + x = x: swap operands so x is first
-                                if (a_is_int && *a.int_val == 0) {
-                                    std::swap(ir.inputs[0], ir.inputs[1]);
-                                }
-                            }
-                            else if (ir.op == IROp::Div) {
-                                // x / 1 = x: convert to Add x + 0
-                                if (b_is_int && *b.int_val == 1) {
-                                    ir.op = IROp::Add;
-                                    ir.inputs[1] = IROperand(IROperand::CONSTI, 0);
-                                }
-                            }
                         }
                         set_dst(res);
                     } else {

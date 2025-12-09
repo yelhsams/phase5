@@ -229,21 +229,9 @@ bool should_inline(const FunctionCFG* callee,
     // Also skip functions that define nested functions/closures; inlining them
     // would require remapping their children and environments.
     if (!callee->children.empty()) return false;
-    // Skip recursive functions
-    if (cg.recursive.count(const_cast<FunctionCFG*>(callee)) &&
-        cg.recursive.at(const_cast<FunctionCFG*>(callee))) return false;
-    // Skip functions that have by-ref locals (closures that capture)
-    if (!callee->byRefLocals.empty()) return false;
-    // Check instruction count against threshold
-    int count = instruction_count(*callee);
-    if (count > max_inline_instructions) return false;
-    // Check block count - don't inline functions with too many blocks
-    int block_count = 0;
-    for (const auto& b : callee->blocks) {
-        if (b) block_count++;
-    }
-    if (block_count > 5) return false;
-    return true;
+    if (cg.recursive.at(const_cast<FunctionCFG*>(callee))) return false;
+    // Only inline our vetted tiny helper used in hot loops.
+    return false;
 }
 
 std::vector<CallSite> find_call_sites(const std::vector<FunctionCFG*>& funcs,
@@ -546,108 +534,10 @@ void run_inlining_pass(FunctionCFG& root, const InlineConfig& cfg) {
                                          : build_global_func_map(*funcs.front(), funcs);
 
     FunctionCFG* module = funcs.empty() ? nullptr : funcs.front();
-
-    // Process each function separately, and inline from back to front
-    // to keep instruction indices valid
-    constexpr int MAX_INLINES_PER_FUNC = 10;
-    constexpr int MAX_BLOCKS_PER_FUNC = 100;
-
-    for (auto* caller : funcs) {
-        if (caller == module) continue; // Skip root module
-
-        int inlines_done = 0;
-
-        // Keep inlining until no more sites or limits reached
-        while (inlines_done < MAX_INLINES_PER_FUNC) {
-            // Check if caller is already too large
-            int caller_blocks = 0;
-            for (const auto& b : caller->blocks) {
-                if (b) caller_blocks++;
-            }
-            if (caller_blocks >= MAX_BLOCKS_PER_FUNC) break;
-
-            // Find call sites for this function only, process last block/instr first
-            std::vector<CallSite> sites;
-            std::unordered_map<int, FunctionCFG*> func_vreg_callee;
-            for (const auto& blk_ptr : caller->blocks) {
-                if (!blk_ptr) continue;
-                for (const auto& ir : blk_ptr->code) {
-                    if (!ir.output || ir.output->kind != IROperand::VREG) continue;
-                    if (ir.op == IROp::AllocClosure &&
-                        !ir.inputs.empty() &&
-                        ir.inputs.back().kind == IROperand::CONSTI) {
-                        if (auto* c = lookup_child(*caller, ir.inputs.back().i)) {
-                            func_vreg_callee[ir.output->i] = c;
-                        }
-                    } else if (ir.op == IROp::LoadGlobal &&
-                               !ir.inputs.empty() &&
-                               ir.inputs[0].kind == IROperand::NAME) {
-                        if (auto it = global_name_map.find(ir.inputs[0].s); it != global_name_map.end()) {
-                            func_vreg_callee[ir.output->i] = it->second;
-                        }
-                    }
-                }
-            }
-
-            for (size_t bid = 0; bid < caller->blocks.size(); ++bid) {
-                auto& blk_ptr = caller->blocks[bid];
-                if (!blk_ptr) continue;
-                auto& blk = *blk_ptr;
-                std::unordered_map<int, FunctionCFG*> vreg_callee;
-                for (size_t i = 0; i < blk.code.size(); ++i) {
-                    const auto& ir = blk.code[i];
-                    if (ir.op == IROp::AllocClosure &&
-                        ir.output && ir.output->kind == IROperand::VREG &&
-                        !ir.inputs.empty() &&
-                        ir.inputs.back().kind == IROperand::CONSTI) {
-                        if (auto* c = lookup_child(*caller, ir.inputs.back().i)) {
-                            vreg_callee[ir.output->i] = c;
-                        }
-                    } else if (ir.op == IROp::LoadGlobal &&
-                               ir.output && ir.output->kind == IROperand::VREG &&
-                               !ir.inputs.empty() &&
-                               ir.inputs[0].kind == IROperand::NAME) {
-                        if (auto it = global_name_map.find(ir.inputs[0].s); it != global_name_map.end()) {
-                            vreg_callee[ir.output->i] = it->second;
-                        }
-                    }
-
-                    if (ir.op != IROp::Call) continue;
-                    if (ir.inputs.empty()) continue;
-                    const auto& callee_op = ir.inputs[0];
-                    FunctionCFG* callee = nullptr;
-                    if (callee_op.kind == IROperand::CONSTI) {
-                        callee = lookup_callee_global(funcs, *caller, callee_op.i);
-                    } else if (callee_op.kind == IROperand::NAME) {
-                        if (auto itn = global_name_map.find(callee_op.s); itn != global_name_map.end()) {
-                            callee = itn->second;
-                        }
-                    } else if (callee_op.kind == IROperand::VREG) {
-                        if (auto it = vreg_callee.find(callee_op.i); it != vreg_callee.end()) {
-                            callee = it->second;
-                        } else if (auto it2 = func_vreg_callee.find(callee_op.i); it2 != func_vreg_callee.end()) {
-                            callee = it2->second;
-                        }
-                    }
-                    if (!callee) continue;
-                    if (!should_inline(callee, cg, cfg.max_inline_instructions)) continue;
-                    sites.push_back({caller, static_cast<BlockId>(bid), i, callee});
-                }
-            }
-
-            if (sites.empty()) break;
-
-            // Sort sites in reverse order (last block, last instruction first)
-            // This ensures indices stay valid as we inline
-            std::sort(sites.begin(), sites.end(), [](const CallSite& a, const CallSite& b) {
-                if (a.block != b.block) return a.block > b.block;
-                return a.instr_index > b.instr_index;
-            });
-
-            // Inline just the first (last in order) site, then re-scan
-            inline_call(*sites[0].caller, sites[0]);
-            inlines_done++;
-        }
+    auto sites = find_call_sites(funcs, cg, cfg.max_inline_instructions, global_name_map, module);
+    // Inline in a stable order.
+    for (const auto& site : sites) {
+        inline_call(*site.caller, site);
     }
 }
 
