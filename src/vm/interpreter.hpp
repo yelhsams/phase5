@@ -1624,8 +1624,13 @@ private:
       }
     }
 
-    // Run GC
-    heap.gc(roots.begin(), roots.end());
+    // Run GC: first try minor GC (generational collection)
+    heap.minor_gc(roots.begin(), roots.end());
+
+    // If memory is still above threshold after minor GC, run full GC
+    if (heap.get_allocated_bytes() >= max_heap_bytes) {
+      heap.full_gc(roots.begin(), roots.end());
+    }
   }
 
   // helper function for optimization execute_function

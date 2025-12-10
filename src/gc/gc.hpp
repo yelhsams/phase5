@@ -126,6 +126,13 @@ class CollectedHeap {
   }
 
   /*
+    Returns the current allocated bytes on the heap.
+  */
+  std::size_t get_allocated_bytes() const {
+    return allocated_bytes_;
+  }
+
+  /*
     The gc method should be periodically invoked by your VM (or by other methods
     in CollectedHeap) whenever the VM decides it is time to reclaim memory.
     This default implementation triggers a full mark-sweep.
